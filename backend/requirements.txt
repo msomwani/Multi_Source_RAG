@@ -12,3 +12,4 @@ requests
 tqdm
 numpy
 beautifulsoup4
+rank-bm25
