@@ -13,7 +13,8 @@
 #     return{"answer":answer,"contexts":contexts}
 
 
-from app.retrieval.hybrid import hybrid_search
+# from app.retrieval.hybrid import hybrid_search
+from app.retrieval.multiquery import multiquery_search
 from app.llm.answer_generator import generate_answer
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -26,7 +27,7 @@ router=APIRouter()
 
 @router.post("/query")
 async def query(req: QueryRequest):
-    docs=hybrid_search(req.query,k=req.k)
+    docs=multiquery_search(req.query,k=req.k)
     answer=generate_answer(req.query,docs)
 
     return {
