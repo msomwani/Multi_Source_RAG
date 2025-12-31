@@ -3,7 +3,7 @@ __pycache__/
 *.py[codz]
 *$py.class
 ragenv
-backend/chroma_db/
+backend/chroma_db
 
 # C extensions
 *.so
