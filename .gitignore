@@ -2,8 +2,8 @@
 __pycache__/
 *.py[codz]
 *$py.class
-ragenv
-backend/chroma_db
+ragenv/
+backend/chroma_db/
 
 # C extensions
 *.so
