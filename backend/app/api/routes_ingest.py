@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, HTTPException
+from fastapi import APIRouter, UploadFile, HTTPException, File, Query
 from io import BytesIO
 from app.ingestion.text_splitter import chunk_text
 from app.llm.embeddings import embed
@@ -8,11 +8,11 @@ from PyPDF2 import PdfReader
 import docx
 import requests
 from bs4 import BeautifulSoup
-from pydantic import BaseModel
-
 
 router = APIRouter()
 
+
+# ---------- HELPERS ----------
 
 def load_pdf_bytes(data: bytes) -> str:
     reader = PdfReader(BytesIO(data))
@@ -24,12 +24,30 @@ def load_docx_bytes(data: bytes) -> str:
     return "\n".join([p.text for p in document.paragraphs])
 
 
+def load_web_page(url: str) -> str:
+    response = requests.get(url, timeout=15)
+    response.raise_for_status()
+
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    # remove script & style tags
+    for tag in soup(["script", "style", "noscript"]):
+        tag.extract()
+
+    text = soup.get_text(separator="\n")
+    cleaned = "\n".join(
+        line.strip() for line in text.splitlines() if line.strip()
+    )
+
+    return cleaned
+
+
+# ---------- FILE INGEST ----------
+
 @router.post("/ingest")
-async def ingest_file(file: UploadFile):
+async def ingest_file(file: UploadFile = File(...)):
 
     raw = await file.read()
-
-    # pick loader based on extension
     name = file.filename.lower()
 
     if name.endswith(".pdf"):
@@ -39,13 +57,12 @@ async def ingest_file(file: UploadFile):
         text = load_docx_bytes(raw)
 
     elif name.endswith(".txt"):
-        # tolerate weird encodings
         text = raw.decode("utf-8", errors="ignore")
 
     else:
         raise HTTPException(400, detail="Unsupported file type")
 
-    # --- chunk + embed ---
+    # chunk + embed
     chunks = chunk_text(text)
     vectors = embed(chunks)
 
@@ -59,39 +76,26 @@ async def ingest_file(file: UploadFile):
     return {"status": "ok", "chunks": len(chunks)}
 
 
-class URLIngestRequest(BaseModel):
-    url:str
-
-def load_web_page(url: str) -> str:
-    response = requests.get(url, timeout=15)
-    response.raise_for_status()
-
-    soup = BeautifulSoup(response.text, "html.parser")
-
-    # remove script & style tags
-    for tag in soup(["script", "style", "noscript"]):
-        tag.extract()
-
-    text = soup.get_text(separator="\n")
-    cleaned = "\n".join(line.strip() for line in text.splitlines() if line.strip())
-
-    return cleaned
-
-
+# ---------- URL INGEST ----------
 
 @router.post("/ingest/url")
-async def ingest_url(body: URLIngestRequest):
+async def ingest_url(url: str = Query(..., description="Web page URL")):
+    """
+    Ingest a web page by URL.
+    Expected call format (React):
+    POST /ingest/url?url=https://example.com
+    """
 
-    text = load_web_page(body.url)
+    text = load_web_page(url)
 
     chunks = chunk_text(text)
     vectors = embed(chunks)
 
     add_chunks(
-        body.url,
+        url,
         chunks,
         vectors,
-        [{"source": body.url}] * len(chunks),
+        [{"source": url}] * len(chunks),
     )
 
-    return {"status": "ok", "source": body.url, "chunks": len(chunks)}
+    return {"status": "ok", "source": url, "chunks": len(chunks)}

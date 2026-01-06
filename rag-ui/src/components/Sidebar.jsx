@@ -1,3 +1,4 @@
+import IngestPanel from "./IngestPanel";
 import { useEffect, useState } from "react";
 import { api } from "../api";
 
@@ -27,6 +28,7 @@ export default function Sidebar({ onSelect, activeId }) {
 
   return (
     <div className="sidebar">
+      <IngestPanel />
       <button onClick={createConversation}>+ New Chat</button>
 
       <ul>
