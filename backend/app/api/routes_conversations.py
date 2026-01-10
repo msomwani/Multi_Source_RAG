@@ -40,13 +40,13 @@ class MessageOut(BaseModel):
 
 # ---------- ROUTES ----------
 
-@router.post("/", response_model=ConversationOut)
+@router.post("", response_model=ConversationOut)
 def create_conversation(db: Session = Depends(get_db)):
     convo = crud_messages.create_conversation(db)
     return convo
 
 
-@router.get("/", response_model=list[ConversationOut])
+@router.get("", response_model=list[ConversationOut])
 def list_conversations(db: Session = Depends(get_db)):
     return db.query(Conversation).order_by(Conversation.created_at.desc()).all()
 

@@ -61,8 +61,21 @@ async def query(req: QueryRequest, db: Session = Depends(get_db)):
     history_pairs = [(m.role, m.content) for m in history]
 
     # 🔍 Multi-query expand → retrieve → rerank
-    candidates = multiquery_search(req.query, k=req.k * 4)
+    candidates = multiquery_search(
+        req.query,
+        conversation_id=conversation_id,
+        k=req.k * 4)
     docs = rerank(req.query, candidates, top_k=req.k)
+
+    print("🔎 Retrieved docs count:", len(docs))
+    print("🔎 Retrieved docs preview:", docs[:1])
+    if not docs:
+        answer = "I don't have enough information in my documents to answer that."
+    else:
+        answer = generate_answer_with_history(
+            req.query, docs, history_pairs
+        )
+
 
     # 🤖 Generate answer with conversation history
     answer = generate_answer_with_history(

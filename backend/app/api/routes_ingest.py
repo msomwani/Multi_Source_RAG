@@ -45,7 +45,7 @@ def load_web_page(url: str) -> str:
 # ---------- FILE INGEST ----------
 
 @router.post("/ingest")
-async def ingest_file(file: UploadFile = File(...)):
+async def ingest_file(conversation_id:int,file: UploadFile = File(...)):
 
     raw = await file.read()
     name = file.filename.lower()
@@ -71,7 +71,9 @@ async def ingest_file(file: UploadFile = File(...)):
         chunks,
         vectors,
         [{"source": file.filename}] * len(chunks),
+        conversation_id=conversation_id
     )
+
 
     return {"status": "ok", "chunks": len(chunks)}
 
@@ -79,7 +81,7 @@ async def ingest_file(file: UploadFile = File(...)):
 # ---------- URL INGEST ----------
 
 @router.post("/ingest/url")
-async def ingest_url(url: str = Query(..., description="Web page URL")):
+async def ingest_url(conversation_id:int,url: str = Query(..., description="Web page URL")):
     """
     Ingest a web page by URL.
     Expected call format (React):
@@ -96,6 +98,7 @@ async def ingest_url(url: str = Query(..., description="Web page URL")):
         chunks,
         vectors,
         [{"source": url}] * len(chunks),
+        conversation_id=conversation_id
     )
 
     return {"status": "ok", "source": url, "chunks": len(chunks)}
