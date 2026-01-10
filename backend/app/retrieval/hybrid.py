@@ -1,61 +1,116 @@
 from rank_bm25 import BM25Okapi
-from app.vectorstore.store import collection
+from app.vectorstore.store import get_collection
 from app.llm.embeddings import embed
+
 import numpy as np
 import re
+from typing import List, Tuple
 
-def simple_tokenize(text:str):
-    return re.findall(r"w+",text.lower())
 
-def build_bm25_index():
-    #pulling docs form chroma
-    docs=collection.get()["documents"]
-    tokenized=[simple_tokenize(d) for d in docs]
-    return BM25Okapi(tokenized)
+# --------------------------------------------------
+# Utilities
+# --------------------------------------------------
 
-bm25=build_bm25_index()
+def simple_tokenize(text: str) -> List[str]:
+    return re.findall(r"\w+", text.lower())
 
-def bm25_search(query:str,k=5):
-    tokens=simple_tokenize(query)
-    scores=bm25.get_scores(tokens)
 
-    #sorting top k indices
-    topk=np.argsort(scores)[::-1][:k]
-    docs=collection.get()["documents"]
+# --------------------------------------------------
+# BM25 (per conversation, lazy)
+# --------------------------------------------------
 
-    return [(docs[i],scores[i]) for i in topk]
+def build_bm25_index(conversation_id: int):
+    collection = get_collection()
 
-def dense_search(query:str,k=5):
-    if collection.count()==0:
+    data = collection.get(
+        where={"conversation_id": conversation_id},
+        include=["documents"],
+    )
+
+    docs = data.get("documents", [])
+    if not docs:
+        return None, []
+
+    tokenized = [simple_tokenize(d) for d in docs]
+    return BM25Okapi(tokenized), docs
+
+
+def bm25_search(
+    query: str,
+    conversation_id: int,
+    k: int = 5,
+) -> List[Tuple[str, float]]:
+    bm25, docs = build_bm25_index(conversation_id)
+    if bm25 is None:
         return []
-    vecs=embed([query])
-    q_vec=vecs[0]
-    res=collection.query(query_embeddings=[q_vec],n_results=k)
 
-    return list(zip(res["documents"][0],res["distances"][0]))
+    tokens = simple_tokenize(query)
+    scores = bm25.get_scores(tokens)
 
-def hybrid_search(query:str,k=5,alpha=0.5):
-    """
-    alpha=weight of dense similarity
-    (1-alpha)=weight of bm25 score
-    """
-    bm25_res=bm25_search(query,k*2)
-    dense_res=dense_search(query,k*2)
+    topk = np.argsort(scores)[::-1][:k]
+    return [(docs[i], scores[i]) for i in topk]
 
-    scores={}
 
-    #normalizing BM25
-    bm25_max=max([s for _,s in bm25_res]) or 1
-    for doc,s in bm25_res:
-        scores.setdefault(doc,0)
-        scores[doc]+=(1-alpha)*(s/bm25_max)
+# --------------------------------------------------
+# Dense Search (conversation-isolated)
+# --------------------------------------------------
 
-    #normalizing dense
-    dense_max=max([s for _,s in dense_res]) or 1
-    for doc,s in dense_res:
-        scores.setdefault(doc,0)
-        scores[doc]+=alpha*(1-s/dense_max)
+def dense_search(
+    query: str,
+    conversation_id: int,
+    k: int = 5,
+) -> List[Tuple[str, float]]:
+    collection = get_collection()
 
-    ranked=sorted(scores.items(),key=lambda x:x[1],reverse=True)
+    data = collection.get(
+        where={"conversation_id": conversation_id},
+        include=["documents"],
+    )
 
-    return[doc for doc, _ in ranked[:k]]
+    if not data.get("documents"):
+        return []
+
+    query_vec = embed([query])[0]
+
+    res = collection.query(
+        query_embeddings=[query_vec],
+        n_results=k,
+        where={"conversation_id": conversation_id},
+    )
+
+    return list(zip(res["documents"][0], res["distances"][0]))
+
+
+# --------------------------------------------------
+# Hybrid Search (BM25 + Dense)
+# --------------------------------------------------
+
+def hybrid_search(
+    query: str,
+    conversation_id: int,
+    k: int = 5,
+    alpha: float = 0.5,
+):
+    bm25_res = bm25_search(query, conversation_id, k * 2)
+    dense_res = dense_search(query, conversation_id, k * 2)
+
+    if not bm25_res and not dense_res:
+        return []
+
+    scores = {}
+
+    # Normalize BM25
+    if bm25_res:
+        bm25_max = max(s for _, s in bm25_res) or 1
+        for doc, score in bm25_res:
+            scores[doc] = scores.get(doc, 0) + (1 - alpha) * (score / bm25_max)
+
+    # Normalize dense (lower distance = better)
+    if dense_res:
+        dense_max = max(s for _, s in dense_res) or 1
+        for doc, score in dense_res:
+            scores[doc] = scores.get(doc, 0) + alpha * (1 - score / dense_max)
+
+    ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+
+    return [doc for doc, _ in ranked[:k]]
