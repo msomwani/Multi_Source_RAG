@@ -14,3 +14,5 @@ numpy
 beautifulsoup4
 rank-bm25
 sentence-transformers
+pydantic-settings
+python-multipart
