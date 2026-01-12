@@ -28,7 +28,9 @@ export default function Sidebar({ onSelect, activeId }) {
 
   return (
     <div className="sidebar">
-      <IngestPanel />
+      {/* ✅ PROP NAME FIXED */}
+      <IngestPanel conversationId={activeId} />
+
       <button onClick={createConversation}>+ New Chat</button>
 
       <ul>
@@ -39,7 +41,12 @@ export default function Sidebar({ onSelect, activeId }) {
             onClick={() => onSelect(c.id)}
           >
             Chat #{c.id}
-            <span onClick={(e) => { e.stopPropagation(); deleteConversation(c.id); }}>
+            <span
+              onClick={(e) => {
+                e.stopPropagation();
+                deleteConversation(c.id);
+              }}
+            >
               ❌
             </span>
           </li>
