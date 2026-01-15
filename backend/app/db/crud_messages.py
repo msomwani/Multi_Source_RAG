@@ -8,11 +8,12 @@ def create_conversation(db:Session,title:str|None = None):
     db.refresh(convo)
     return convo
 
-def add_message(db:Session,conversation_id:int,role:str,content:str):
+def add_message(db:Session,conversation_id:int,role:str,content:str,meta=None):
     msg=Message(
         conversation_id=conversation_id,
         role=role,
-        content=content
+        content=content,
+        meta=meta,
     )
 
     db.add(msg)

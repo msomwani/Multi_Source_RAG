@@ -1,13 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from datetime import datetime
+from typing import Any, Optional
+
 from app.db.session import SessionLocal
 from app.db import crud_messages
 from app.db.models import Conversation, Message
-from datetime import datetime
+
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/conversations", tags=["Conversations"])
 
 
+# --------------------------------------------------
+# DB dependency
+# --------------------------------------------------
 def get_db():
     db = SessionLocal()
     try:
@@ -16,10 +23,9 @@ def get_db():
         db.close()
 
 
-# ---------- SCHEMAS ----------
-from pydantic import BaseModel
-
-
+# --------------------------------------------------
+# Pydantic Schemas
+# --------------------------------------------------
 class ConversationOut(BaseModel):
     id: int
     created_at: datetime
@@ -33,13 +39,24 @@ class MessageOut(BaseModel):
     role: str
     content: str
     created_at: datetime
+    meta: Optional[dict[str, Any]] = None  # ✅ SOURCES LIVE HERE
 
     class Config:
         from_attributes = True
 
 
-# ---------- ROUTES ----------
+class ConversationWithMessagesOut(BaseModel):
+    id: int
+    created_at: datetime
+    messages: list[MessageOut]
 
+    class Config:
+        from_attributes = True
+
+
+# --------------------------------------------------
+# Routes
+# --------------------------------------------------
 @router.post("", response_model=ConversationOut)
 def create_conversation(db: Session = Depends(get_db)):
     convo = crud_messages.create_conversation(db)
@@ -48,12 +65,15 @@ def create_conversation(db: Session = Depends(get_db)):
 
 @router.get("", response_model=list[ConversationOut])
 def list_conversations(db: Session = Depends(get_db)):
-    return db.query(Conversation).order_by(Conversation.created_at.desc()).all()
+    return (
+        db.query(Conversation)
+        .order_by(Conversation.created_at.desc())
+        .all()
+    )
 
 
-@router.get("/{conversation_id}")
+@router.get("/{conversation_id}", response_model=ConversationWithMessagesOut)
 def get_conversation(conversation_id: int, db: Session = Depends(get_db)):
-
     convo = (
         db.query(Conversation)
         .filter(Conversation.id == conversation_id)
@@ -71,14 +91,14 @@ def get_conversation(conversation_id: int, db: Session = Depends(get_db)):
     )
 
     return {
-        "conversation": convo,
-        "messages": messages
+        "id": convo.id,
+        "created_at": convo.created_at,
+        "messages": messages,  # ✅ includes meta automatically
     }
 
 
 @router.delete("/{conversation_id}")
 def delete_conversation(conversation_id: int, db: Session = Depends(get_db)):
-
     convo = (
         db.query(Conversation)
         .filter(Conversation.id == conversation_id)
@@ -88,10 +108,10 @@ def delete_conversation(conversation_id: int, db: Session = Depends(get_db)):
     if convo is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
-    # delete messages
-    db.query(Message).filter(Message.conversation_id == conversation_id).delete()
+    db.query(Message).filter(
+        Message.conversation_id == conversation_id
+    ).delete()
 
-    # delete conversation
     db.delete(convo)
     db.commit()
 

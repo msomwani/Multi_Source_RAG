@@ -44,9 +44,26 @@ def add_chunks(
     )
 
 
-def search(query_embedding, k: int = 5):
+def search(query_embedding, conversation_id: int, k: int = 5):
     collection = get_collection()
-    return collection.query(
+
+    res = collection.query(
         query_embeddings=[query_embedding],
         n_results=k,
+        where={"conversation_id": conversation_id},
+        include=["documents", "metadatas", "distances"],
     )
+
+    docs = []
+    for text, meta, score in zip(
+        res["documents"][0],
+        res["metadatas"][0],
+        res["distances"][0],
+    ):
+        docs.append({
+            "text": text,
+            "source": meta.get("source", "unknown"),
+            "score": float(score),
+        })
+
+    return docs

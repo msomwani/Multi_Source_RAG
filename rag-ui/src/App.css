@@ -72,3 +72,14 @@ input {
   flex: 1;
   padding: 8px;
 }
+
+.sources {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.sources ul {
+  margin: 4px 0 0;
+  padding-left: 16px;
+}

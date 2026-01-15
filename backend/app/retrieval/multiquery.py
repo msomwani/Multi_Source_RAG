@@ -1,5 +1,6 @@
-from app.retrieval.hybrid import hybrid_search
+from app.retrieval.dense import dense_retrieve
 from app.llm.utils import generate_query_variations
+
 
 def multiquery_search(
     query: str,
@@ -11,15 +12,22 @@ def multiquery_search(
     all_queries = [query] + variations
 
     results = []
+
     for q in all_queries:
-        docs = hybrid_search(q, conversation_id, k)
+        docs = dense_retrieve(
+            q,
+            conversation_id=conversation_id,
+            k=k,
+        )
         results.extend(docs)
 
+    # Deduplicate by text
     seen = set()
     unique = []
+
     for d in results:
-        if d not in seen:
+        if d["text"] not in seen:
+            seen.add(d["text"])
             unique.append(d)
-            seen.add(d)
 
     return unique[:k]
