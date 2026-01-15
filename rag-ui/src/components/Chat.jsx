@@ -1,12 +1,25 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { api } from "../api";
 
-export default function Chat({ conversationId, onMessageSent }) {
+export default function Chat({ conversationId }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
 
-  // Load messages
+  const abortRef = useRef(null);
+  const bottomRef = useRef(null);
+
+  // ---------------------------------
+  // Auto-scroll
+  // ---------------------------------
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isStreaming]);
+
+  // ---------------------------------
+  // Load conversation
+  // ---------------------------------
   useEffect(() => {
     if (typeof conversationId !== "number") {
       setMessages([]);
@@ -21,31 +34,85 @@ export default function Chat({ conversationId, onMessageSent }) {
     loadConversation();
   }, [conversationId]);
 
+  // ---------------------------------
+  // Stop streaming
+  // ---------------------------------
+  function stopStreaming() {
+    abortRef.current?.abort();
+    setIsStreaming(false);
+    setLoading(false);
+  }
+
+  // ---------------------------------
+  // Send message (STREAM)
+  // ---------------------------------
   async function sendMessage() {
-    if (!input.trim() || typeof conversationId !== "number") return;
+    if (!input.trim()) return;
+    if (typeof conversationId !== "number") return;
 
     setLoading(true);
+    setIsStreaming(true);
+
+    const tempId = Date.now();
+
+    // Optimistic assistant placeholder
+    setMessages((prev) => [
+      ...prev,
+      { id: tempId, role: "assistant", content: "" },
+    ]);
+
+    abortRef.current = new AbortController();
 
     try {
-      const res = await api.post("/query", {
-        query: input,
-        conversation_id: conversationId,
-      });
+      const res = await fetch(
+        `${api.defaults.baseURL}/query/stream`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: abortRef.current.signal,
+          body: JSON.stringify({
+            query: input,
+            conversation_id: conversationId,
+          }),
+        }
+      );
 
-      const newId = res.data.conversation_id;
-      onMessageSent(newId);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
 
-      const convo = await api.get(`/conversations/${newId}`);
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === tempId
+              ? { ...m, content: m.content + chunk }
+              : m
+          )
+        );
+      }
+
+      // Reload messages after completion (for sources)
+      const convo = await api.get(`/conversations/${conversationId}`);
       setMessages(convo.data.messages || []);
-
       setInput("");
-    } catch (e) {
-      console.error(e);
+    } catch (err) {
+      if (err.name !== "AbortError") {
+        console.error("Streaming failed", err);
+      }
     } finally {
       setLoading(false);
+      setIsStreaming(false);
+      abortRef.current = null;
     }
   }
 
+  // ---------------------------------
+  // UI
+  // ---------------------------------
   return (
     <div className="chat">
       <div className="messages">
@@ -54,9 +121,15 @@ export default function Chat({ conversationId, onMessageSent }) {
             key={m.id}
             className={m.role === "assistant" ? "msg bot" : "msg user"}
           >
-            <div>{m.content}</div>
+            <div>
+              {m.content}
+              {/* ✅ blinking cursor while streaming */}
+              {isStreaming && m === messages[messages.length - 1] && (
+                <span className="cursor">▍</span>
+              )}
+            </div>
 
-            {/* ✅ SOURCES */}
+            {/* ✅ Sources (DB) */}
             {m.role === "assistant" &&
               m.meta?.sources?.length > 0 && (
                 <div className="sources">
@@ -70,6 +143,13 @@ export default function Chat({ conversationId, onMessageSent }) {
               )}
           </div>
         ))}
+
+        {/* ✅ typing indicator */}
+        {isStreaming && (
+          <div className="typing">Assistant is typing…</div>
+        )}
+
+        <div ref={bottomRef} />
       </div>
 
       <div className="inputRow">
@@ -80,9 +160,14 @@ export default function Chat({ conversationId, onMessageSent }) {
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
           placeholder="Type your message…"
         />
-        <button onClick={sendMessage} disabled={loading}>
-          {loading ? "..." : "Send"}
-        </button>
+
+        {isStreaming ? (
+          <button onClick={stopStreaming} className="stop">
+            Stop
+          </button>
+        ) : (
+          <button onClick={sendMessage}>Send</button>
+        )}
       </div>
     </div>
   );

@@ -83,3 +83,17 @@ input {
   margin: 4px 0 0;
   padding-left: 16px;
 }
+
+.cursor {
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+.typing {
+  font-size: 12px;
+  opacity: 0.6;
+  margin: 6px 0;
+}
