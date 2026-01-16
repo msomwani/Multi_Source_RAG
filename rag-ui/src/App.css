@@ -1,99 +1,485 @@
+/* =========================
+   THEME (White + Blue + Grey + Black)
+========================= */
+:root {
+  --bg: #f8fafc;          /* light grey background */
+  --panel: #ffffff;       /* primary white */
+  --border: #e2e8f0;      /* neutral grey border */
+  --text: #0f172a;        /* black-ish */
+  --muted: #64748b;       /* grey text */
+  --blue: #2563eb;        /* secondary blue */
+  --blue-soft: #dbeafe;   /* soft blue background */
+  --bot: #f1f5f9;         /* grey bubble */
+  --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  --radius: 18px;
+}
+
+/* =========================
+   MAIN LAYOUT
+========================= */
+/* =========================
+   APP SHELL (ChatGPT Layout)
+========================= */
+
+.appShell {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+/* ✅ Top Header */
+.topHeader {
+  height: 64px;
+  min-height: 64px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 10px 18px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.topHeaderTitle {
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.topHeaderSub {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/* ✅ Sidebar + Chat */
+.layoutBody {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.chatWrap {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* ✅ Empty screen */
+.emptyState {
+  flex: 1;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  padding: 40px;
+  color: var(--muted);
+}
+
+.emptyState h2 {
+  margin: 0;
+  color: var(--text);
+}
+
+.emptyState p {
+  margin-top: 8px;
+  max-width: 460px;
+}
+
+
 .layout {
   display: flex;
   height: 100vh;
-  font-family: Arial;
+  width: 100vw;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
 }
 
+/* =========================
+   SIDEBAR BASE
+========================= */
 .sidebar {
-  width: 250px;
-  background: #111;
-  color: white;
-  padding: 10px;
+  width: 320px;
+  min-width: 320px;
+  max-width: 320px;
+  background: var(--panel);
+  color: var(--text);
+  padding: 16px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
 }
 
-.sidebar button {
+/* ✅ Sidebar Header */
+.sidebarHeader {
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+  background: linear-gradient(
+    135deg,
+    rgba(37, 99, 235, 0.10),
+    rgba(255, 255, 255, 1)
+  );
+}
+
+.sidebarTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sidebarLogoDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--blue);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.sidebarTitle {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.sidebarSubtitle {
+  margin-top: 4px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* ✅ Primary button */
+.sidebarPrimaryBtn {
   width: 100%;
-  padding: 8px;
-  margin-bottom: 10px;
+  border: none;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--blue);
+  color: white;
+  cursor: pointer;
+  font-weight: 800;
+  transition: 0.2s ease;
+  margin-top: 2px;
 }
 
-.sidebar ul {
+.sidebarPrimaryBtn:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+/* ✅ Section Title */
+.sidebarSectionTitle {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 4px;
+}
+
+/* ✅ Sidebar chat list */
+.sidebarList {
   list-style: none;
   padding: 0;
-}
-
-.sidebar li {
-  padding: 6px;
-  cursor: pointer;
+  margin: 0;
+  flex: 1;
+  overflow: auto;
   display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sidebarItem {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
+  padding: 12px 12px;
+  border-radius: 14px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: white;
+  transition: 0.18s ease;
 }
 
-.sidebar li.active {
-  background: #444;
+.sidebarItem:hover {
+  background: rgba(37, 99, 235, 0.06);
+  border-color: rgba(37, 99, 235, 0.25);
 }
 
+.sidebarItem.active {
+  background: var(--blue-soft);
+  border-color: rgba(37, 99, 235, 0.35);
+}
+
+.sidebarItemText {
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* ✅ Delete chat button */
+.sidebarDeleteBtn {
+  border: none;
+  background: transparent;
+  color: #ef4444;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+  border-radius: 10px;
+  padding: 6px 10px;
+  transition: 0.15s ease;
+}
+
+.sidebarDeleteBtn:hover {
+  background: rgba(239, 68, 68, 0.12);
+}
+
+/* =========================
+   CHAT AREA
+========================= */
 .chat {
   flex: 1;
   display: flex;
   flex-direction: column;
+  padding: 18px;
+  gap: 14px;
+  overflow: hidden;
 }
 
+/* Messages container */
 .messages {
   flex: 1;
-  padding: 10px;
+  background: var(--panel);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 16px;
   overflow: auto;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
 }
 
+/* =========================
+   MESSAGE BUBBLES
+========================= */
 .msg {
-  padding: 8px 12px;
-  margin: 6px 0;
-  border-radius: 8px;
-  max-width: 70%;
+  padding: 10px 14px;
+  margin: 10px 0;
+  border-radius: 18px;
+  max-width: min(70%, 640px);
+  line-height: 1.5;
+  font-size: 0.98rem;
+  border: 1px solid var(--border);
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04);
 }
 
 .msg.user {
-  background: #d1e7ff;
+  background: var(--blue-soft);
+  border-color: rgba(37, 99, 235, 0.2);
   align-self: flex-end;
 }
 
 .msg.bot {
-  background: #f0f0f0;
+  background: var(--bot);
   align-self: flex-start;
 }
 
+/* Sources box */
+.sources {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.03);
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.sources strong {
+  color: var(--text);
+}
+
+.sources ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+/* =========================
+   INPUT BAR
+========================= */
 .inputRow {
   display: flex;
-  padding: 10px;
   gap: 10px;
+  padding: 12px;
+  background: var(--panel);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  align-items: center;
 }
 
 input {
   flex: 1;
-  padding: 8px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  outline: none;
+  background: #ffffff;
+  color: var(--text);
+  font-size: 1rem;
 }
 
-.sources {
-  margin-top: 6px;
-  font-size: 0.85rem;
-  opacity: 0.8;
+input:focus {
+  border-color: rgba(37, 99, 235, 0.55);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
 }
 
-.sources ul {
-  margin: 4px 0 0;
-  padding-left: 16px;
+/* Button base */
+button {
+  border-radius: 14px;
+  border: none;
+  padding: 12px 16px;
+  font-size: 1rem;
+  font-weight: 800;
+  background: var(--blue);
+  color: white;
+  cursor: pointer;
+  transition: 0.2s ease;
 }
 
+button:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Stop button */
+button.stop {
+  background: #0f172a;
+}
+
+/* Cursor + typing */
 .cursor {
   animation: blink 1s step-end infinite;
 }
 
 @keyframes blink {
-  50% { opacity: 0; }
+  50% {
+    opacity: 0;
+  }
 }
 
 .typing {
   font-size: 12px;
   opacity: 0.6;
   margin: 6px 0;
+  color: var(--muted);
+}
+
+
+/* =========================
+   INGEST PANEL (Sidebar Card)
+========================= */
+
+.ingestCard {
+  border: 1px solid var(--border);
+  background: white;
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  /* ✅ prevents overflow outside sidebar */
+  width: 100%;
+  max-width: 100%;
+}
+
+.ingestCardHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ingestTitle {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.ingestHint {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.ingestBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ingestLabel {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.ingestInput {
+  width: 100%;
+  max-width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  outline: none;
+  font-size: 0.95rem;
+  background: white;
+  color: var(--text);
+}
+
+/* ✅ Fixes ugly file input spacing */
+.ingestInput[type="file"] {
+  padding: 8px;
+}
+
+.ingestInput:focus {
+  border-color: rgba(37, 99, 235, 0.55);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.ingestActionBtn {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: none;
+  font-weight: 800;
+  cursor: pointer;
+  background: var(--blue);
+  color: white;
+  transition: 0.15s ease;
+}
+
+.ingestActionBtn:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.ingestStatus {
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.03);
+  color: var(--text);
 }

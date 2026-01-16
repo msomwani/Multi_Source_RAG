@@ -1,54 +1,77 @@
-import IngestPanel from "./IngestPanel";
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import IngestPanel from "./IngestPanel";
 
 export default function Sidebar({ onSelect, activeId }) {
-  const [convos, setConvos] = useState([]);
+  const [conversations, setConversations] = useState([]);
 
-  async function load() {
-    const res = await api.get("/conversations");
-    setConvos(res.data);
+  async function loadConversations() {
+    try {
+      const res = await api.get("/conversations");
+      setConversations(res.data || []);
+    } catch (e) {
+      console.error("Failed to load conversations", e);
+    }
   }
 
   async function createConversation() {
-    const res = await api.post("/conversations");
-    load();
-    onSelect(res.data.id);
+    try {
+      const res = await api.post("/conversations");
+      await loadConversations();
+      onSelect(res.data.id);
+    } catch (e) {
+      console.error("Failed to create conversation", e);
+    }
   }
 
   async function deleteConversation(id) {
-    await api.delete(`/conversations/${id}`);
-    load();
-    if (id === activeId) onSelect(null);
+    try {
+      await api.delete(`/conversations/${id}`);
+      await loadConversations();
+
+      if (activeId === id) {
+        onSelect(null);
+      }
+    } catch (e) {
+      console.error("Failed to delete conversation", e);
+    }
   }
 
   useEffect(() => {
-    load();
+    loadConversations();
   }, []);
 
   return (
     <div className="sidebar">
-      {/* ✅ PROP NAME FIXED */}
+      {/* ✅ Ingest Panel FIRST */}
       <IngestPanel conversationId={activeId} />
 
-      <button onClick={createConversation}>+ New Chat</button>
+      {/* ✅ New Chat button BELOW ingest (less cluttered) */}
+      <button className="sidebarPrimaryBtn" onClick={createConversation}>
+        + New Chat
+      </button>
 
-      <ul>
-        {convos.map(c => (
+      {/* ✅ Conversations List */}
+      <div className="sidebarSectionTitle">Chats</div>
+
+      <ul className="sidebarList">
+        {conversations.map((c) => (
           <li
             key={c.id}
-            className={c.id === activeId ? "active" : ""}
+            className={c.id === activeId ? "sidebarItem active" : "sidebarItem"}
             onClick={() => onSelect(c.id)}
           >
-            Chat #{c.id}
-            <span
+            <span className="sidebarItemText">Chat #{c.id}</span>
+
+            <button
+              className="sidebarDeleteBtn"
               onClick={(e) => {
                 e.stopPropagation();
                 deleteConversation(c.id);
               }}
             >
-              ❌
-            </span>
+              ✕
+            </button>
           </li>
         ))}
       </ul>

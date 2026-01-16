@@ -10,16 +10,12 @@ export default function Chat({ conversationId }) {
   const abortRef = useRef(null);
   const bottomRef = useRef(null);
 
-  // ---------------------------------
-  // Auto-scroll
-  // ---------------------------------
+  // ✅ Auto-scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isStreaming]);
 
-  // ---------------------------------
-  // Load conversation
-  // ---------------------------------
+  // ✅ Load conversation messages
   useEffect(() => {
     if (typeof conversationId !== "number") {
       setMessages([]);
@@ -34,18 +30,14 @@ export default function Chat({ conversationId }) {
     loadConversation();
   }, [conversationId]);
 
-  // ---------------------------------
-  // Stop streaming
-  // ---------------------------------
+  // ✅ Stop streaming
   function stopStreaming() {
     abortRef.current?.abort();
     setIsStreaming(false);
     setLoading(false);
   }
 
-  // ---------------------------------
-  // Send message (STREAM)
-  // ---------------------------------
+  // ✅ Send message (stream)
   async function sendMessage() {
     if (!input.trim()) return;
     if (typeof conversationId !== "number") return;
@@ -55,7 +47,6 @@ export default function Chat({ conversationId }) {
 
     const tempId = Date.now();
 
-    // Optimistic assistant placeholder
     setMessages((prev) => [
       ...prev,
       { id: tempId, role: "assistant", content: "" },
@@ -64,18 +55,15 @@ export default function Chat({ conversationId }) {
     abortRef.current = new AbortController();
 
     try {
-      const res = await fetch(
-        `${api.defaults.baseURL}/query/stream`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: abortRef.current.signal,
-          body: JSON.stringify({
-            query: input,
-            conversation_id: conversationId,
-          }),
-        }
-      );
+      const res = await fetch(`${api.defaults.baseURL}/query/stream`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: abortRef.current.signal,
+        body: JSON.stringify({
+          query: input,
+          conversation_id: conversationId,
+        }),
+      });
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -88,14 +76,12 @@ export default function Chat({ conversationId }) {
 
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === tempId
-              ? { ...m, content: m.content + chunk }
-              : m
+            m.id === tempId ? { ...m, content: m.content + chunk } : m
           )
         );
       }
 
-      // Reload messages after completion (for sources)
+      // Reload final messages (for sources)
       const convo = await api.get(`/conversations/${conversationId}`);
       setMessages(convo.data.messages || []);
       setInput("");
@@ -110,9 +96,9 @@ export default function Chat({ conversationId }) {
     }
   }
 
-  // ---------------------------------
-  // UI
-  // ---------------------------------
+  // ✅ IMPORTANT: If no chat selected, render nothing (App.jsx shows emptyState)
+  if (typeof conversationId !== "number") return null;
+
   return (
     <div className="chat">
       <div className="messages">
@@ -123,31 +109,25 @@ export default function Chat({ conversationId }) {
           >
             <div>
               {m.content}
-              {/* ✅ blinking cursor while streaming */}
               {isStreaming && m === messages[messages.length - 1] && (
                 <span className="cursor">▍</span>
               )}
             </div>
 
-            {/* ✅ Sources (DB) */}
-            {m.role === "assistant" &&
-              m.meta?.sources?.length > 0 && (
-                <div className="sources">
-                  <strong>Sources:</strong>
-                  <ul>
-                    {m.meta.sources.map((src, i) => (
-                      <li key={i}>{src}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+            {m.role === "assistant" && m.meta?.sources?.length > 0 && (
+              <div className="sources">
+                <strong>Sources:</strong>
+                <ul>
+                  {m.meta.sources.map((src, i) => (
+                    <li key={i}>{src}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         ))}
 
-        {/* ✅ typing indicator */}
-        {isStreaming && (
-          <div className="typing">Assistant is typing…</div>
-        )}
+        {isStreaming && <div className="typing">Assistant is typing…</div>}
 
         <div ref={bottomRef} />
       </div>

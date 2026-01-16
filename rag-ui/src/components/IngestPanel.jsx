@@ -17,10 +17,10 @@ export default function IngestPanel({ conversationId }) {
       form.append("file", file);
 
       await api.post("/ingest", form, {
-        params: { conversation_id: conversationId } // ✅ QUERY PARAM
+        params: { conversation_id: conversationId },
       });
 
-      setStatus("📄 File ingested successfully ✔");
+      setStatus("✅ File ingested successfully");
       setFile(null);
     } catch (e) {
       console.error(e);
@@ -38,11 +38,11 @@ export default function IngestPanel({ conversationId }) {
       await api.post("/ingest/url", null, {
         params: {
           url,
-          conversation_id: conversationId
-        }
+          conversation_id: conversationId,
+        },
       });
 
-      setStatus("🌐 URL ingested successfully ✔");
+      setStatus("✅ URL ingested successfully");
       setUrl("");
     } catch (e) {
       console.error(e);
@@ -51,25 +51,46 @@ export default function IngestPanel({ conversationId }) {
   }
 
   return (
-    <div style={{ padding: 10, borderBottom: "1px solid #333" }}>
-      <h3 style={{ color: "white" }}>📥 Ingest Data</h3>
-
-      <div style={{ marginBottom: 10 }}>
-        <input type="file" onChange={e => setFile(e.target.files[0])} />
-        <button onClick={uploadFile}>Upload File</button>
+    <div className="ingestCard">
+      <div className="ingestCardHeader">
+        <div className="ingestTitle">📥 Ingest Data</div>
+        <div className="ingestHint">
+          {conversationId ? `Chat #${conversationId}` : "Select a chat first"}
+        </div>
       </div>
 
-      <div>
+      {/* ✅ File */}
+      <div className="ingestBlock">
+        <label className="ingestLabel">Upload File</label>
+
         <input
-          value={url}
-          onChange={e => setUrl(e.target.value)}
-          placeholder="Enter website URL"
-          style={{ width: "70%" }}
+          className="ingestInput"
+          type="file"
+          onChange={(e) => setFile(e.target.files[0])}
         />
-        <button onClick={uploadUrl}>Add URL</button>
+
+        <button className="ingestActionBtn" onClick={uploadFile}>
+          Upload
+        </button>
       </div>
 
-      {status && <p style={{ color: "lightgreen" }}>{status}</p>}
+      {/* ✅ URL */}
+      <div className="ingestBlock">
+        <label className="ingestLabel">Ingest URL</label>
+
+        <input
+          className="ingestInput"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://example.com"
+        />
+
+        <button className="ingestActionBtn" onClick={uploadUrl}>
+          Add URL
+        </button>
+      </div>
+
+      {status && <div className="ingestStatus">{status}</div>}
     </div>
   );
 }
