@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { api } from "../api";
 
-export default function Chat({ conversationId }) {
+export default function Chat({ conversationId, onConversationCreated }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -10,14 +10,15 @@ export default function Chat({ conversationId }) {
   const abortRef = useRef(null);
   const bottomRef = useRef(null);
 
-  // ✅ Auto-scroll
+  const isDraft = conversationId === "draft";
+  const isRealConversation = typeof conversationId === "number";
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isStreaming]);
 
-  // ✅ Load conversation messages
   useEffect(() => {
-    if (typeof conversationId !== "number") {
+    if (!isRealConversation) {
       setMessages([]);
       return;
     }
@@ -28,28 +29,43 @@ export default function Chat({ conversationId }) {
     }
 
     loadConversation();
-  }, [conversationId]);
+  }, [conversationId, isRealConversation]);
 
-  // ✅ Stop streaming
   function stopStreaming() {
     abortRef.current?.abort();
+    abortRef.current = null;
     setIsStreaming(false);
     setLoading(false);
   }
 
-  // ✅ Send message (stream)
+  async function ensureConversationExists() {
+    if (isRealConversation) return conversationId;
+
+    const res = await api.post("/conversations");
+    const newId = res.data.id;
+
+    onConversationCreated?.(newId);
+    return newId;
+  }
+
   async function sendMessage() {
     if (!input.trim()) return;
-    if (typeof conversationId !== "number") return;
+
+    const userText = input.trim();
+    setInput("");
 
     setLoading(true);
     setIsStreaming(true);
 
-    const tempId = Date.now();
+    const realConversationId = await ensureConversationExists();
+
+    const userMsgId = Date.now();
+    const assistantMsgId = userMsgId + 1;
 
     setMessages((prev) => [
       ...prev,
-      { id: tempId, role: "assistant", content: "" },
+      { id: userMsgId, role: "user", content: userText },
+      { id: assistantMsgId, role: "assistant", content: "" },
     ]);
 
     abortRef.current = new AbortController();
@@ -60,8 +76,8 @@ export default function Chat({ conversationId }) {
         headers: { "Content-Type": "application/json" },
         signal: abortRef.current.signal,
         body: JSON.stringify({
-          query: input,
-          conversation_id: conversationId,
+          query: userText,
+          conversation_id: realConversationId,
         }),
       });
 
@@ -76,17 +92,15 @@ export default function Chat({ conversationId }) {
 
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === tempId ? { ...m, content: m.content + chunk } : m
+            m.id === assistantMsgId ? { ...m, content: m.content + chunk } : m
           )
         );
       }
 
-      // Reload final messages (for sources)
-      const convo = await api.get(`/conversations/${conversationId}`);
+      const convo = await api.get(`/conversations/${realConversationId}`);
       setMessages(convo.data.messages || []);
-      setInput("");
     } catch (err) {
-      if (err.name !== "AbortError") {
+      if (err?.name !== "AbortError") {
         console.error("Streaming failed", err);
       }
     } finally {
@@ -96,12 +110,20 @@ export default function Chat({ conversationId }) {
     }
   }
 
-  // ✅ IMPORTANT: If no chat selected, render nothing (App.jsx shows emptyState)
-  if (typeof conversationId !== "number") return null;
-
   return (
     <div className="chat">
       <div className="messages">
+        {messages.length === 0 && (
+          <div className="emptyState">
+            <h2>{isDraft ? "New Chat" : "No messages yet"}</h2>
+            <p>
+              {isDraft
+                ? "Type a message or ingest a document to start."
+                : "Start by sending your first message."}
+            </p>
+          </div>
+        )}
+
         {messages.map((m) => (
           <div
             key={m.id}
@@ -128,7 +150,6 @@ export default function Chat({ conversationId }) {
         ))}
 
         {isStreaming && <div className="typing">Assistant is typing…</div>}
-
         <div ref={bottomRef} />
       </div>
 
@@ -146,7 +167,9 @@ export default function Chat({ conversationId }) {
             Stop
           </button>
         ) : (
-          <button onClick={sendMessage}>Send</button>
+          <button onClick={sendMessage} disabled={loading}>
+            Send
+          </button>
         )}
       </div>
     </div>

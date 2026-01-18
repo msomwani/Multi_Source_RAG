@@ -1,23 +1,37 @@
 import { useState } from "react";
 import { api } from "../api";
 
-export default function IngestPanel({ conversationId }) {
+export default function IngestPanel({ conversationId, onConversationCreated }) {
   const [file, setFile] = useState(null);
   const [url, setUrl] = useState("");
   const [status, setStatus] = useState("");
 
+  const isDraft = conversationId === "draft";
+  const isRealConversation = typeof conversationId === "number";
+
+  async function ensureConversationExists() {
+    if (isRealConversation) return conversationId;
+
+    const res = await api.post("/conversations");
+    const newId = res.data.id;
+    onConversationCreated?.(newId);
+    return newId;
+  }
+
   async function uploadFile() {
-    if (!file || !conversationId) {
-      setStatus("❌ Select a chat before ingesting");
+    if (!file) {
+      setStatus("❌ Select a file first");
       return;
     }
 
     try {
+      const realConversationId = await ensureConversationExists();
+
       const form = new FormData();
       form.append("file", file);
 
       await api.post("/ingest", form, {
-        params: { conversation_id: conversationId },
+        params: { conversation_id: realConversationId },
       });
 
       setStatus("✅ File ingested successfully");
@@ -29,16 +43,18 @@ export default function IngestPanel({ conversationId }) {
   }
 
   async function uploadUrl() {
-    if (!url.trim() || !conversationId) {
-      setStatus("❌ Select a chat before ingesting");
+    if (!url.trim()) {
+      setStatus("❌ Enter a URL first");
       return;
     }
 
     try {
+      const realConversationId = await ensureConversationExists();
+
       await api.post("/ingest/url", null, {
         params: {
           url,
-          conversation_id: conversationId,
+          conversation_id: realConversationId,
         },
       });
 
@@ -55,7 +71,9 @@ export default function IngestPanel({ conversationId }) {
       <div className="ingestCardHeader">
         <div className="ingestTitle">📥 Ingest Data</div>
         <div className="ingestHint">
-          {conversationId ? `Chat #${conversationId}` : "Select a chat first"}
+          {isRealConversation
+            ? `Chat #${conversationId}`
+            : "New chat (not saved yet)"}
         </div>
       </div>
 

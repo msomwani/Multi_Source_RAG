@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, forwardRef, useImperativeHandle } from "react";
 import { api } from "../api";
 import IngestPanel from "./IngestPanel";
 
-export default function Sidebar({ onSelect, activeId }) {
+const Sidebar = forwardRef(function Sidebar({ onSelect, activeId }, ref) {
   const [conversations, setConversations] = useState([]);
 
   async function loadConversations() {
@@ -14,14 +14,12 @@ export default function Sidebar({ onSelect, activeId }) {
     }
   }
 
-  async function createConversation() {
-    try {
-      const res = await api.post("/conversations");
-      await loadConversations();
-      onSelect(res.data.id);
-    } catch (e) {
-      console.error("Failed to create conversation", e);
-    }
+  useImperativeHandle(ref, () => ({
+    reload: loadConversations,
+  }));
+
+  function createDraftConversation() {
+    onSelect("draft");
   }
 
   async function deleteConversation(id) {
@@ -30,7 +28,7 @@ export default function Sidebar({ onSelect, activeId }) {
       await loadConversations();
 
       if (activeId === id) {
-        onSelect(null);
+        onSelect("draft");
       }
     } catch (e) {
       console.error("Failed to delete conversation", e);
@@ -43,15 +41,18 @@ export default function Sidebar({ onSelect, activeId }) {
 
   return (
     <div className="sidebar">
-      {/* ✅ Ingest Panel FIRST */}
-      <IngestPanel conversationId={activeId} />
+      <IngestPanel
+        conversationId={activeId}
+        onConversationCreated={async (newId) => {
+          await loadConversations();
+          onSelect(newId);
+        }}
+      />
 
-      {/* ✅ New Chat button BELOW ingest (less cluttered) */}
-      <button className="sidebarPrimaryBtn" onClick={createConversation}>
+      <button className="sidebarPrimaryBtn" onClick={createDraftConversation}>
         + New Chat
       </button>
 
-      {/* ✅ Conversations List */}
       <div className="sidebarSectionTitle">Chats</div>
 
       <ul className="sidebarList">
@@ -77,4 +78,6 @@ export default function Sidebar({ onSelect, activeId }) {
       </ul>
     </div>
   );
-}
+});
+
+export default Sidebar;
