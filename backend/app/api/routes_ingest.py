@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 
 from PIL import Image
 import pytesseract
+from pdf2image import convert_from_bytes
 
 router = APIRouter()
 
@@ -40,6 +41,25 @@ def load_image_bytes_ocr(data:bytes)->str:
     text=pytesseract.image_to_string(img)
     return text.strip()
 
+def load_pdf_bytes_with_ocr_fallback(data:bytes)->str:
+    extracted_text=load_pdf_bytes(data)
+
+    if extracted_text and len(extracted_text.strip())>50:
+        return extracted_text
+    
+    images=convert_from_bytes(data)
+    ocr_texts=[]
+
+    for idx, img in enumerate(images):
+        page_text = pytesseract.image_to_string(img)
+        page_text = page_text.strip()
+
+        if page_text:
+            ocr_texts.append(f"\n\n--- Page {idx + 1} ---\n{page_text}")
+
+    final_text = "\n".join(ocr_texts).strip()
+    return final_text
+
 # ---------- FILE INGEST ----------
 
 @router.post("/ingest")
@@ -51,7 +71,7 @@ async def ingest_file(
     name = file.filename.lower()
 
     if name.endswith(".pdf"):
-        text = load_pdf_bytes(raw)
+        text = load_pdf_bytes_with_ocr_fallback(raw)
     elif name.endswith(".docx"):
         text = load_docx_bytes(raw)
     elif name.endswith(".txt"):
