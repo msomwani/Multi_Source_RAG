@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     poppler-utils \
     libpq-dev \
+    tesseract-ocr \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python deps

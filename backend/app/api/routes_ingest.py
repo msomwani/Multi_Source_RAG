@@ -9,6 +9,9 @@ import docx
 import requests
 from bs4 import BeautifulSoup
 
+from PIL import Image
+import pytesseract
+
 router = APIRouter()
 
 # ---------- HELPERS ----------
@@ -32,6 +35,11 @@ def load_web_page(url: str) -> str:
     text = soup.get_text(separator="\n")
     return "\n".join(line.strip() for line in text.splitlines() if line.strip())
 
+def load_image_bytes_ocr(data:bytes)->str:
+    img=Image.open(BytesIO(data)).convert("RGB")
+    text=pytesseract.image_to_string(img)
+    return text.strip()
+
 # ---------- FILE INGEST ----------
 
 @router.post("/ingest")
@@ -48,6 +56,9 @@ async def ingest_file(
         text = load_docx_bytes(raw)
     elif name.endswith(".txt"):
         text = raw.decode("utf-8", errors="ignore")
+    elif name.endswith((".png",".jpg",".jpeg")):
+        text=load_image_bytes_ocr(raw)
+        
     else:
         raise HTTPException(400, detail="Unsupported file type")
 
