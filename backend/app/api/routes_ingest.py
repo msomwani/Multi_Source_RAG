@@ -12,6 +12,7 @@ from bs4 import BeautifulSoup
 from PIL import Image,ImageEnhance,ImageFilter
 import pytesseract
 from pdf2image import convert_from_bytes
+import pdfplumber
 
 router = APIRouter()
 
@@ -21,9 +22,54 @@ def load_pdf_bytes(data: bytes) -> str:
     reader = PdfReader(BytesIO(data))
     return "\n".join(p.extract_text() or "" for p in reader.pages)
 
+def load_pdf_tables_bytes(data:bytes,max_pages:int=20):
+    tables_text=[]
+    with pdfplumber.open(BytesIO(data)) as pdf:
+        total_pages=min(len(pdf.pages),max_pages)
+
+        for p_index in range(total_pages):
+            page=pdf.pages[p_index]
+            tables=page.extract_tables()
+
+            if not tables:
+                continue
+
+            tables_text.append(f"\n\n--- PDF TABLES (Page {p_index + 1}) ---")
+
+            for t_index, table in enumerate(tables):
+                tables_text.append(f"[Table {t_index + 1}]")
+
+                for row in table:
+                    if not row:
+                        continue
+                    clean_row = [(c or "").strip().replace("\n", " ") for c in row]
+                    line = " | ".join(clean_row)
+                    if line.strip():
+                        tables_text.append(line)
+
+    return "\n".join(tables_text).strip()
+
 def load_docx_bytes(data: bytes) -> str:
     document = docx.Document(BytesIO(data))
     return "\n".join(p.text for p in document.paragraphs)
+
+def load_docx_tables_bytes(data: bytes) -> str:
+    
+    document = docx.Document(BytesIO(data))
+    tables_text = []
+
+    for t_index, table in enumerate(document.tables):
+        tables_text.append(f"\n\n--- DOCX TABLE {t_index + 1} ---")
+
+        for row in table.rows:
+            cells = [cell.text.strip().replace("\n", " ") for cell in row.cells]
+            line = " | ".join(cells)
+            if line.strip():
+                tables_text.append(line)
+
+    print("✅ DOCX tables found:", len(document.tables))
+
+    return "\n".join(tables_text).strip()
 
 def load_web_page(url: str) -> str:
     response = requests.get(url, timeout=15)
@@ -83,9 +129,13 @@ async def ingest_file(
     name = file.filename.lower()
 
     if name.endswith(".pdf"):
-        text = load_pdf_bytes_with_ocr_fallback(raw)
+        text_main = load_pdf_bytes_with_ocr_fallback(raw)
+        text_tables = load_pdf_tables_bytes(raw)#tables extraction
+        text = (text_main + "\n\n" + text_tables).strip()
     elif name.endswith(".docx"):
-        text = load_docx_bytes(raw)
+        text_main = load_docx_bytes(raw)
+        text_tables = load_docx_tables_bytes(raw)#tables extraction
+        text = (text_main + "\n\n" + text_tables).strip()
     elif name.endswith(".txt"):
         text = raw.decode("utf-8", errors="ignore")
     elif name.endswith((".png",".jpg",".jpeg")):
