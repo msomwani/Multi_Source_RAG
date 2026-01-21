@@ -9,7 +9,7 @@ import docx
 import requests
 from bs4 import BeautifulSoup
 
-from PIL import Image
+from PIL import Image,ImageEnhance,ImageFilter
 import pytesseract
 from pdf2image import convert_from_bytes
 
@@ -38,20 +38,32 @@ def load_web_page(url: str) -> str:
 
 def load_image_bytes_ocr(data:bytes)->str:
     img=Image.open(BytesIO(data)).convert("RGB")
-    text=pytesseract.image_to_string(img)
+    text=pytesseract.image_to_string(img,config="--oem 3 --psm 6")
     return text.strip()
 
-def load_pdf_bytes_with_ocr_fallback(data:bytes)->str:
+def preprocess_for_ocr(img:Image.Image)->Image.Image:
+    img=img.convert("L")#grayscale
+
+    img=ImageEnhance.Contrast(img).enhance(2.0)#contrast boost
+    img=img.filter(ImageFilter.SHARPEN)#sharpening
+    w,h=img.size
+    img=img.resize((w*2,h*2))#upscale
+    # img=img.point(lambda x:0 if x < 140 else 255 ,"1")#thresholding
+
+    return img.convert("L")
+
+def load_pdf_bytes_with_ocr_fallback(data:bytes,max_pages:int=15)->str:
     extracted_text=load_pdf_bytes(data)
 
     if extracted_text and len(extracted_text.strip())>50:
         return extracted_text
     
-    images=convert_from_bytes(data)
+    images=convert_from_bytes(data,dpi=300,first_page=1,last_page=max_pages)
     ocr_texts=[]
 
     for idx, img in enumerate(images):
-        page_text = pytesseract.image_to_string(img)
+        img=preprocess_for_ocr(img)
+        page_text = pytesseract.image_to_string(img,config="--oem 3 --psm 6")
         page_text = page_text.strip()
 
         if page_text:
@@ -81,6 +93,10 @@ async def ingest_file(
         
     else:
         raise HTTPException(400, detail="Unsupported file type")
+    
+    #text.strip is blank
+    if not text.strip():
+        raise HTTPException(400, detail="No text extracted from file")
 
     chunks = chunk_text(text)
     vectors = embed(chunks)
