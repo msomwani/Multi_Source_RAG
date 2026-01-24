@@ -1,5 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { api } from "../api";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+// ✅ NEW: structured table renderer
+import TableBlock from "./TableBlock";
 
 export default function Chat({ conversationId, onConversationCreated }) {
   const [messages, setMessages] = useState([]);
@@ -9,6 +14,7 @@ export default function Chat({ conversationId, onConversationCreated }) {
 
   const abortRef = useRef(null);
   const bottomRef = useRef(null);
+  const textareaRef = useRef(null);
 
   const isDraft = conversationId === "draft";
   const isRealConversation = typeof conversationId === "number";
@@ -97,6 +103,7 @@ export default function Chat({ conversationId, onConversationCreated }) {
         );
       }
 
+      // ✅ After stream completes, reload conversation to get meta (sources + tables)
       const convo = await api.get(`/conversations/${realConversationId}`);
       setMessages(convo.data.messages || []);
     } catch (err) {
@@ -110,12 +117,20 @@ export default function Chat({ conversationId, onConversationCreated }) {
     }
   }
 
+  // ✅ Enter = Send, Shift+Enter = New line
+  function handleKeyDown(e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
   return (
     <div className="chat">
       <div className="messages">
         {messages.length === 0 && (
           <div className="emptyState">
-            <h2>{isDraft ? "New Chat" : "No messages yet"}</h2>
+            <h2>{isDraft ? "New Chat ✍️" : "No messages yet"}</h2>
             <p>
               {isDraft
                 ? "Type a message or ingest a document to start."
@@ -129,8 +144,36 @@ export default function Chat({ conversationId, onConversationCreated }) {
             key={m.id}
             className={m.role === "assistant" ? "msg bot" : "msg user"}
           >
-            <div>
-              {m.content}
+            <div className="msgContent">
+              {m.role === "assistant" ? (
+                <>
+                  {/* ✅ normal markdown answer */}
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}
+                    components={{
+                      table: () => null,
+                      thead: () => null,
+                      tbody: () => null,
+                      tr: () => null,
+                      th: () => null,
+                      td: () => null,
+                    }}
+                    >
+                    {m.content}
+                  </ReactMarkdown>
+
+                  {/* ✅ structured tables (from m.meta.tables) */}
+                  {m.meta?.tables?.length > 0 && (
+                    <div className="tablesWrap">
+                      {m.meta.tables.map((t, i) => (
+                        <TableBlock key={i} table={t} />
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div>{m.content}</div>
+              )}
+
               {isStreaming && m === messages[messages.length - 1] && (
                 <span className="cursor">▍</span>
               )}
@@ -154,12 +197,15 @@ export default function Chat({ conversationId, onConversationCreated }) {
       </div>
 
       <div className="inputRow">
-        <input
+        <textarea
+          ref={textareaRef}
+          className="chatInput"
           value={input}
           disabled={loading}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          placeholder="Type your message…"
+          onKeyDown={handleKeyDown}
+          placeholder="Type your message… (Enter to send, Shift+Enter for new line)"
+          rows={1}
         />
 
         {isStreaming ? (

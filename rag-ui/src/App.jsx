@@ -19,13 +19,11 @@ export default function App() {
   return (
     <div className="appShell">
       <header className="topHeader">
-        {/* ✅ LEFT SIDE (Title + Subtitle) */}
         <div className="topHeaderLeft">
           <div className="topHeaderTitle">Multi-Source RAG</div>
           <div className="topHeaderSub">PDF • DOCX • Web • Text</div>
         </div>
 
-        {/* ✅ RIGHT SIDE (Theme Toggle) */}
         <div className="topHeaderRight">
           <span className="themeLabel">{dark ? "Dark" : "Light"}</span>
 

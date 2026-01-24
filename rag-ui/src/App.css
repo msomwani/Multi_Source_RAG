@@ -2,14 +2,14 @@
    THEME (White + Blue + Grey + Black)
 ========================= */
 :root {
-  --bg: #f8fafc;          /* light grey background */
-  --panel: #ffffff;       /* primary white */
-  --border: #e2e8f0;      /* neutral grey border */
-  --text: #0f172a;        /* black-ish */
-  --muted: #64748b;       /* grey text */
-  --blue: #2563eb;        /* secondary blue */
-  --blue-soft: #dbeafe;   /* soft blue background */
-  --bot: #f1f5f9;         /* grey bubble */
+  --bg: #f8fafc; /* light grey background */
+  --panel: #ffffff; /* primary white */
+  --border: #e2e8f0; /* neutral grey border */
+  --text: #0f172a; /* black-ish */
+  --muted: #64748b; /* grey text */
+  --blue: #2563eb; /* secondary blue */
+  --blue-soft: #dbeafe; /* soft blue background */
+  --bot: #f1f5f9; /* grey bubble */
   --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
   --radius: 18px;
 }
@@ -381,6 +381,19 @@ body.dark .msg.user {
   align-self: flex-start;
 }
 
+/* ✅ Markdown content improvements */
+.msgContent {
+  width: 100%;
+}
+
+.msgContent p {
+  margin: 0;
+}
+
+.msgContent p + p {
+  margin-top: 10px;
+}
+
 /* Sources box */
 .sources {
   margin-top: 10px;
@@ -419,7 +432,8 @@ body.dark .sources {
   align-items: center;
 }
 
-input {
+/* ✅ This is for the new textarea input */
+.chatInput {
   flex: 1;
   padding: 12px 14px;
   border-radius: 14px;
@@ -428,18 +442,22 @@ input {
   background: var(--panel);
   color: var(--text);
   font-size: 1rem;
+  resize: none;
+  min-height: 46px;
+  line-height: 1.4;
+  font-family: inherit;
 }
 
-input::placeholder {
+.chatInput::placeholder {
   color: var(--muted);
 }
 
-input:focus {
+.chatInput:focus {
   border-color: rgba(37, 99, 235, 0.55);
   box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
 }
 
-body.dark input:focus {
+body.dark .chatInput:focus {
   border-color: rgba(59, 130, 246, 0.55);
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
 }
@@ -603,4 +621,108 @@ body.dark .ingestInput:focus {
 
 body.dark .ingestStatus {
   background: rgba(255, 255, 255, 0.04);
+}
+
+/* =========================
+   ✅ MARKDOWN TABLE SUPPORT (ReactMarkdown + remark-gfm)
+========================= */
+.msgContent table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 0.92rem;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.msgContent th,
+.msgContent td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.msgContent th {
+  background: rgba(37, 99, 235, 0.12);
+  font-weight: 800;
+}
+
+body.dark .msgContent th {
+  background: rgba(59, 130, 246, 0.18);
+}
+
+/* ✅ Code blocks look clean */
+.msgContent pre {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.06);
+  border: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+body.dark .msgContent pre {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.msgContent code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+  font-size: 0.9rem;
+}
+
+/* =========================
+   ✅ STRUCTURED TABLE UI (JSON tables)
+========================= */
+.tablesWrap {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tableBlock {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+body.dark .tableBlock {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tableTitle {
+  font-weight: 900;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.tableScroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.structuredTable {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 520px;
+}
+
+.structuredTable th,
+.structuredTable td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.structuredTable th {
+  background: rgba(37, 99, 235, 0.12);
+  font-weight: 900;
+}
+
+body.dark .structuredTable th {
+  background: rgba(59, 130, 246, 0.18);
 }
