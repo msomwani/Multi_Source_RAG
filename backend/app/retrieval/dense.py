@@ -1,6 +1,8 @@
 from app.llm.embeddings import embed
 from app.vectorstore.store import get_collection
 from typing import List, Dict
+import json
+
 
 
 def dense_retrieve(
@@ -8,10 +10,7 @@ def dense_retrieve(
     conversation_id: int,
     k: int = 5,
 ) -> List[Dict]:
-    """
-    Dense retrieval scoped to a conversation.
-    Returns: [{text, source, score}]
-    """
+    
 
     collection = get_collection()
 
@@ -21,7 +20,7 @@ def dense_retrieve(
         include=["documents", "metadatas"],
     )
 
-    if not existing["documents"]:
+    if not existing.get("documents"):
         return []
 
     query_vec = embed([query])[0]
@@ -39,10 +38,28 @@ def dense_retrieve(
         res["metadatas"][0],
         res["distances"][0],
     ):
-        docs.append({
-            "text": text,
-            "source": meta.get("source", "unknown"),
-            "score": float(score),
-        })
+        meta = meta or {}
+        # ✅ decode table json if present
+        if isinstance(meta.get("table_json"), str):
+            try:
+                meta["table"] = json.loads(meta["table_json"])
+            except Exception:
+                meta["table"] = None
+        
+        if isinstance(meta.get("table_json"), str):
+            try:
+                meta["table"] = json.loads(meta["table_json"])
+            except Exception:
+                pass
+
+
+        docs.append(
+            {
+                "text": text,
+                "source": meta.get("source", "unknown"),
+                "score": float(score),
+                "meta": meta,  
+            }
+        )
 
     return docs

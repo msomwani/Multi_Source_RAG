@@ -59,12 +59,12 @@ def dense_search(
     query: str,
     conversation_id: int,
     k: int = 5,
-) -> List[Tuple[str, float]]:
+) -> List[Tuple[str, float, dict]]:
     collection = get_collection()
 
     data = collection.get(
         where={"conversation_id": conversation_id},
-        include=["documents"],
+        include=["documents", "metadatas"],
     )
 
     if not data.get("documents"):
@@ -76,9 +76,11 @@ def dense_search(
         query_embeddings=[query_vec],
         n_results=k,
         where={"conversation_id": conversation_id},
+        include=["documents", "metadatas", "distances"],
     )
 
-    return list(zip(res["documents"][0], res["distances"][0]))
+    return list(zip(res["documents"][0], res["distances"][0], res["metadatas"][0]))
+
 
 
 # --------------------------------------------------
