@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.db import crud_messages
 from app.db.models import Conversation
-import json
 
 from app.retrieval.multiquery import multiquery_search
 from app.retrieval.rerank import rerank
@@ -14,6 +13,9 @@ from app.llm.answer_generator import (
     generate_answer_with_history,
     stream_answer,
 )
+
+import json
+import re
 
 router = APIRouter()
 
@@ -31,43 +33,67 @@ class QueryRequest(BaseModel):
     k: int = 5
     conversation_id: int | None = None
 
-def extract_tables_from_docs(docs):
+
+# --------------------------------------------------
+# TABLE INTENT + EXTRACTION
+# --------------------------------------------------
+def _explicit_table_request(query: str) -> bool:
+    q = (query or "").lower().strip()
+
+    # normalize: remove punctuation + normalize spaces
+    q = re.sub(r"[^a-z0-9\s]", " ", q)
+    q = re.sub(r"\s+", " ", q).strip()
+
+    # common typo fix
+    q = q.replace("teh", "the")
+
+    triggers = [
+        "show table",
+        "show the table",
+        "show me table",
+        "show me the table",
+        "render table",
+        "display table",
+        "print table",
+        "full table",
+        "entire table",
+        "complete table",
+        "give me the table",
+        "share the table",
+    ]
+
+    return any(t in q for t in triggers)
+
+
+def extract_tables_from_docs(query: str, docs):
     """
-    ✅ Collect structured tables from reranked docs metadata.
-    Supports:
-      meta["table"] as dict
-      meta["table"] as JSON string
-      meta["table_json"] as JSON string
+    ✅ Returns structured tables ONLY if user explicitly asks.
+    ✅ Decodes table JSON stored in Chroma metadata (string -> dict).
     """
+    if not _explicit_table_request(query):
+        return []
 
     tables = []
     seen = set()
 
     for d in docs:
         meta = d.get("meta") or {}
+
         if meta.get("type") != "table_row":
             continue
 
         table = meta.get("table")
 
-        # ✅ if table is stored as string, decode it
+        # table stored as JSON string -> decode
         if isinstance(table, str):
             try:
                 table = json.loads(table)
             except Exception:
                 table = None
 
-        # ✅ fallback: check table_json
-        if table is None and isinstance(meta.get("table_json"), str):
-            try:
-                table = json.loads(meta["table_json"])
-            except Exception:
-                table = None
-
         if not isinstance(table, dict):
             continue
 
-        # ✅ stable fingerprint (dedupe)
         title = table.get("title", "")
         cols = tuple(table.get("columns", []) or [])
         fp = (title, cols)
@@ -80,6 +106,31 @@ def extract_tables_from_docs(docs):
 
     return tables
 
+
+def build_sources_and_contexts(docs):
+    """
+    ✅ Stable numbering for citations:
+      sources = ["a.pdf", "b.docx"]
+      contexts = ["[1] (a.pdf) ...", "[2] (b.docx) ..."]
+    """
+    sources = []
+    seen = set()
+
+    for d in docs:
+        s = d.get("source", "unknown")
+        if s not in seen:
+            seen.add(s)
+            sources.append(s)
+
+    source_index = {src: i + 1 for i, src in enumerate(sources)}
+
+    contexts = []
+    for d in docs:
+        src = d.get("source", "unknown")
+        idx = source_index.get(src, 0)
+        contexts.append(f"[{idx}] ({src})\n{d['text']}")
+
+    return sources, contexts
 
 
 # --------------------------------------------------
@@ -120,17 +171,24 @@ async def query(req: QueryRequest, db: Session = Depends(get_db)):
     docs = rerank(req.query, candidates, top_k=req.k)
 
     if not docs:
-        answer = "I don't have enough information to answer that."
+        answer = "I don't have enough information in the provided documents."
         sources = []
         tables = []
     else:
-        answer = generate_answer_with_history(
-            req.query,
-            [d["text"] for d in docs],
-            history_pairs,
-        )
-        sources = list({d.get("source", "unknown") for d in docs})
-        tables = extract_tables_from_docs(docs)
+        sources, contexts = build_sources_and_contexts(docs)
+        tables = extract_tables_from_docs(req.query, docs)
+
+        # ✅ table request = do NOT use LLM
+        if _explicit_table_request(req.query) and tables:
+            answer = "Sure — here is the table from your document. [1]"
+        elif _explicit_table_request(req.query) and not tables:
+            answer = "I couldn't find a table in the retrieved documents."
+        else:
+            answer = generate_answer_with_history(
+                req.query,
+                contexts,  # ✅ numbered contexts for inline citations
+                history_pairs,
+            )
 
     crud_messages.add_message(
         db,
@@ -189,11 +247,42 @@ async def query_stream(
 
     docs = rerank(req.query, candidates, top_k=req.k)
 
-    contexts = [d["text"] for d in docs]
-    sources = list({d.get("source", "unknown") for d in docs})
+    sources, contexts = build_sources_and_contexts(docs)
+    tables = extract_tables_from_docs(req.query, docs)
 
-    # ✅ NEW: structured tables extracted from retrieved docs
-    tables = extract_tables_from_docs(docs)
+    # ✅ If user asked for table and we have it → short streamed answer only
+    if _explicit_table_request(req.query) and tables:
+
+        def event_stream():
+            full_answer = "Sure — here is the table from your document. [1]"
+            yield full_answer
+
+            crud_messages.add_message(
+                db,
+                conversation_id=conversation_id,
+                role="assistant",
+                content=full_answer,
+                meta={"sources": sources, "tables": tables},
+            )
+
+        return StreamingResponse(event_stream(), media_type="text/plain")
+
+    # ✅ If user asked for table but none found
+    if _explicit_table_request(req.query) and not tables:
+
+        def event_stream():
+            full_answer = "I couldn't find a table in the retrieved documents."
+            yield full_answer
+
+            crud_messages.add_message(
+                db,
+                conversation_id=conversation_id,
+                role="assistant",
+                content=full_answer,
+                meta={"sources": sources, "tables": []},
+            )
+
+        return StreamingResponse(event_stream(), media_type="text/plain")
 
     def event_stream():
         full_answer = ""
@@ -205,13 +294,12 @@ async def query_stream(
             full_answer += token
             yield token
 
-        # ✅ save ONLY if completed
         crud_messages.add_message(
             db,
             conversation_id=conversation_id,
             role="assistant",
             content=full_answer,
-            meta={"sources": sources, "tables": tables},
+            meta={"sources": sources, "tables": []},  # ✅ NO TABLES unless explicitly asked
         )
 
     return StreamingResponse(

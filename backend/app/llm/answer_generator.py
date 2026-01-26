@@ -15,6 +15,18 @@ def _normalize_contexts(contexts):
             normalized.append(c["text"])
     return normalized
 
+SYSTEM_RULES = """
+You are a RAG assistant.
+
+CRITICAL RULES:
+1) Use ONLY the provided context. Do not use outside knowledge.
+2) Every factual sentence MUST end with at least one citation like [1] or [2].
+3) Citations must refer to the numbered context blocks.
+4) If the answer is not in the context, say: "I don't have enough information in the provided documents."
+5) Do NOT invent citations.
+6) Keep the answer clear and short. Prefer bullet points when possible.
+"""
+
 
 # --------------------------------------------------
 # NON-STREAMING (used by /query)
@@ -26,7 +38,7 @@ def generate_answer_with_history(query, contexts, history):
     messages = [
         {
             "role": "system",
-            "content": "You are a helpful RAG assistant. Use only the provided context."
+            "content": SYSTEM_RULES
         },
         {
             "role": "system",
@@ -58,7 +70,7 @@ def stream_answer(query, contexts, history):
     messages = [
         {
             "role": "system",
-            "content": "You are a helpful RAG assistant. Use only the provided context."
+            "content": SYSTEM_RULES
         },
         {
             "role": "system",

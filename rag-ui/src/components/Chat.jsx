@@ -184,7 +184,7 @@ export default function Chat({ conversationId, onConversationCreated }) {
                 <strong>Sources:</strong>
                 <ul>
                   {m.meta.sources.map((src, i) => (
-                    <li key={i}>{src}</li>
+                    <li key={i}>[{i+1}] {src}</li>
                   ))}
                 </ul>
               </div>
