@@ -1,0 +1,32 @@
+[
+  {
+    "name": "msme_credit_guarantee",
+    "question": "What is the Credit Guarantee scheme for MSMEs?",
+    "conversation_id": 199,
+    "expected_keywords": ["credit", "guarantee", "loan", "msme"]
+  },
+  {
+    "name": "who_can_apply_clcs",
+    "question": "Who can apply for the Credit Linked Capital Subsidy scheme?",
+    "conversation_id": 199,
+    "expected_keywords": ["eligible", "mse", "units", "apply"]
+  },
+  {
+    "name": "how_to_apply_marketing_assistance",
+    "question": "How can MSMEs apply for marketing assistance schemes?",
+    "conversation_id": 199,
+    "expected_keywords": ["apply", "application", "msme", "assistance"]
+  },
+  {
+    "name": "summarize_msme_schemes",
+    "question": "Summarize the major MSME schemes in short.",
+    "conversation_id": 199,
+    "expected_keywords": ["scheme", "assistance", "msme", "government"]
+  },
+  {
+    "name": "eligibility_women_entrepreneurs",
+    "question": "Are there special benefits for women entrepreneurs under MSME schemes?",
+    "conversation_id": 199,
+    "expected_keywords": ["women", "entrepreneurs", "msme", "scheme"]
+  }
+]

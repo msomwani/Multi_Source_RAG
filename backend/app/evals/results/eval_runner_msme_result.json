@@ -1,0 +1,187 @@
+{
+  "msme_credit_guarantee": {
+    "dense@5": {
+      "latency_ms": 864.5,
+      "keywords_ok": 1,
+      "top_sources": [
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf"
+      ]
+    },
+    "hybrid@10": {
+      "latency_ms": 569.2,
+      "keywords_ok": 1,
+      "top_sources": [
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf"
+      ]
+    },
+    "multiquery@40": {
+      "latency_ms": 4700.4,
+      "keywords_ok": 1,
+      "top_sources": [
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf"
+      ]
+    },
+    "multiquery+rerank@5": {
+      "latency_ms": 9538.3,
+      "keywords_ok": 1,
+      "top_sources": [
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf"
+      ]
+    }
+  },
+  "who_can_apply_clcs": {
+    "dense@5": {
+      "latency_ms": 517.3,
+      "keywords_ok": 1,
+      "top_sources": [
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf"
+      ]
+    },
+    "hybrid@10": {
+      "latency_ms": 703.2,
+      "keywords_ok": 1,
+      "top_sources": [
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf"
+      ]
+    },
+    "multiquery@40": {
+      "latency_ms": 4861.3,
+      "keywords_ok": 1,
+      "top_sources": [
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf"
+      ]
+    },
+    "multiquery+rerank@5": {
+      "latency_ms": 7024.9,
+      "keywords_ok": 0,
+      "top_sources": [
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf"
+      ]
+    }
+  },
+  "how_to_apply_marketing_assistance": {
+    "dense@5": {
+      "latency_ms": 519.0,
+      "keywords_ok": 1,
+      "top_sources": [
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf"
+      ]
+    },
+    "hybrid@10": {
+      "latency_ms": 528.0,
+      "keywords_ok": 1,
+      "top_sources": [
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf"
+      ]
+    },
+    "multiquery@40": {
+      "latency_ms": 6898.5,
+      "keywords_ok": 1,
+      "top_sources": [
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf"
+      ]
+    },
+    "multiquery+rerank@5": {
+      "latency_ms": 11792.1,
+      "keywords_ok": 1,
+      "top_sources": [
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf"
+      ]
+    }
+  },
+  "summarize_msme_schemes": {
+    "dense@5": {
+      "latency_ms": 532.1,
+      "keywords_ok": 1,
+      "top_sources": [
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf"
+      ]
+    },
+    "hybrid@10": {
+      "latency_ms": 547.8,
+      "keywords_ok": 1,
+      "top_sources": [
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf"
+      ]
+    },
+    "multiquery@40": {
+      "latency_ms": 4013.2,
+      "keywords_ok": 1,
+      "top_sources": [
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf"
+      ]
+    },
+    "multiquery+rerank@5": {
+      "latency_ms": 15806.9,
+      "keywords_ok": 0,
+      "top_sources": [
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf"
+      ]
+    }
+  },
+  "eligibility_women_entrepreneurs": {
+    "dense@5": {
+      "latency_ms": 541.9,
+      "keywords_ok": 1,
+      "top_sources": [
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf"
+      ]
+    },
+    "hybrid@10": {
+      "latency_ms": 544.5,
+      "keywords_ok": 1,
+      "top_sources": [
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf"
+      ]
+    },
+    "multiquery@40": {
+      "latency_ms": 5360.3,
+      "keywords_ok": 1,
+      "top_sources": [
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf"
+      ]
+    },
+    "multiquery+rerank@5": {
+      "latency_ms": 12631.3,
+      "keywords_ok": 1,
+      "top_sources": [
+        "MSME_Schemes_English_0.pdf",
+        "MSME_Schemes_English_0.pdf"
+      ]
+    }
+  }
+}
