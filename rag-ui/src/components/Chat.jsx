@@ -3,9 +3,6 @@ import { api } from "../api";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-// ✅ NEW: structured table renderer
-import TableBlock from "./TableBlock";
-
 export default function Chat({ conversationId, onConversationCreated }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -103,7 +100,7 @@ export default function Chat({ conversationId, onConversationCreated }) {
         );
       }
 
-      // ✅ After stream completes, reload conversation to get meta (sources + tables)
+      // reload conversation to fetch stored meta (sources)
       const convo = await api.get(`/conversations/${realConversationId}`);
       setMessages(convo.data.messages || []);
     } catch (err) {
@@ -117,7 +114,7 @@ export default function Chat({ conversationId, onConversationCreated }) {
     }
   }
 
-  // ✅ Enter = Send, Shift+Enter = New line
+  // Enter = Send, Shift+Enter = newline
   function handleKeyDown(e) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -146,30 +143,9 @@ export default function Chat({ conversationId, onConversationCreated }) {
           >
             <div className="msgContent">
               {m.role === "assistant" ? (
-                <>
-                  {/* ✅ normal markdown answer */}
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}
-                    components={{
-                      table: () => null,
-                      thead: () => null,
-                      tbody: () => null,
-                      tr: () => null,
-                      th: () => null,
-                      td: () => null,
-                    }}
-                    >
-                    {m.content}
-                  </ReactMarkdown>
-
-                  {/* ✅ structured tables (from m.meta.tables) */}
-                  {m.meta?.tables?.length > 0 && (
-                    <div className="tablesWrap">
-                      {m.meta.tables.map((t, i) => (
-                        <TableBlock key={i} table={t} />
-                      ))}
-                    </div>
-                  )}
-                </>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {m.content}
+                </ReactMarkdown>
               ) : (
                 <div>{m.content}</div>
               )}
@@ -184,7 +160,9 @@ export default function Chat({ conversationId, onConversationCreated }) {
                 <strong>Sources:</strong>
                 <ul>
                   {m.meta.sources.map((src, i) => (
-                    <li key={i}>[{i+1}] {src}</li>
+                    <li key={i}>
+                      [{i + 1}] {src}
+                    </li>
                   ))}
                 </ul>
               </div>
