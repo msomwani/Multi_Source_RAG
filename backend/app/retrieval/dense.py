@@ -4,17 +4,19 @@ from typing import List, Dict
 import json
 
 
-
 def dense_retrieve(
     query: str,
     conversation_id: int,
     k: int = 5,
 ) -> List[Dict]:
-    
+    """
+    Dense retrieval scoped to a conversation.
+    Returns: [{text, source, score, meta}]
+    score = chroma distance (lower is better)
+    """
 
     collection = get_collection()
 
-    # If no docs exist for this conversation, return empty
     existing = collection.get(
         where={"conversation_id": conversation_id},
         include=["documents", "metadatas"],
@@ -39,26 +41,26 @@ def dense_retrieve(
         res["distances"][0],
     ):
         meta = meta or {}
-        # ✅ decode table json if present
-        if isinstance(meta.get("table_json"), str):
+
+        # ✅ decode structured table json stored in metadata (if any)
+        if isinstance(meta.get("table"), str):
             try:
-                meta["table"] = json.loads(meta["table_json"])
+                meta["table"] = json.loads(meta["table"])
             except Exception:
-                meta["table"] = None
-        
+                pass
+
         if isinstance(meta.get("table_json"), str):
             try:
                 meta["table"] = json.loads(meta["table_json"])
             except Exception:
                 pass
 
-
         docs.append(
             {
                 "text": text,
                 "source": meta.get("source", "unknown"),
                 "score": float(score),
-                "meta": meta,  
+                "meta": meta,
             }
         )
 

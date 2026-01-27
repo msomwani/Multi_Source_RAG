@@ -13,9 +13,9 @@ def rerank(
         print("🟡 RERANK: received empty docs")
         return []
 
-    print("\n🔵 RERANK INPUT (raw docs):")
-    for i, d in enumerate(docs[:5]):
-        print(f"  [{i}] type={type(d)} value={d}")
+    # print("\n🔵 RERANK INPUT (raw docs):")
+    # for i, d in enumerate(docs[:5]):
+    #     print(f"  [{i}] type={type(d)} value={d}")
 
     # ----------------------------
     # Normalize (BUT PRESERVE META)
@@ -42,9 +42,9 @@ def rerank(
             }
         )
 
-    print("\n🟢 RERANK AFTER NORMALIZATION:")
-    for i, d in enumerate(normalized[:5]):
-        print(f"  [{i}] text_len={len(d['text'])} source={d['source']} meta_keys={list((d.get('meta') or {}).keys())}")
+    # print("\n🟢 RERANK AFTER NORMALIZATION:")
+    # for i, d in enumerate(normalized[:5]):
+    #     print(f"  [{i}] text_len={len(d['text'])} source={d['source']} meta_keys={list((d.get('meta') or {}).keys())}")
 
     if not normalized:
         return []
@@ -90,10 +90,10 @@ def rerank(
         if len(final_docs) >= top_k:
             break
 
-    print("\n🟣 RERANK OUTPUT (source-diverse):")
-    for i, d in enumerate(final_docs):
-        print(
-            f"  [{i}] score={d['score']:.4f} source={d['source']} meta_type={(d.get('meta') or {}).get('type')}"
-        )
+    # print("\n🟣 RERANK OUTPUT (source-diverse):")
+    # for i, d in enumerate(final_docs):
+    #     print(
+    #         f"  [{i}] score={d['score']:.4f} source={d['source']} meta_type={(d.get('meta') or {}).get('type')}"
+    #     )
 
     return final_docs
