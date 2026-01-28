@@ -11,7 +11,6 @@ export default function Chat({ conversationId, onConversationCreated }) {
 
   const abortRef = useRef(null);
   const bottomRef = useRef(null);
-  const textareaRef = useRef(null);
 
   const isDraft = conversationId === "draft";
   const isRealConversation = typeof conversationId === "number";
@@ -46,7 +45,6 @@ export default function Chat({ conversationId, onConversationCreated }) {
 
     const res = await api.post("/conversations");
     const newId = res.data.id;
-
     onConversationCreated?.(newId);
     return newId;
   }
@@ -92,15 +90,16 @@ export default function Chat({ conversationId, onConversationCreated }) {
         if (done) break;
 
         const chunk = decoder.decode(value);
-
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === assistantMsgId ? { ...m, content: m.content + chunk } : m
+            m.id === assistantMsgId
+              ? { ...m, content: m.content + chunk }
+              : m
           )
         );
       }
 
-      // reload conversation to fetch stored meta (sources)
+      // fetch stored meta (sources)
       const convo = await api.get(`/conversations/${realConversationId}`);
       setMessages(convo.data.messages || []);
     } catch (err) {
@@ -114,7 +113,6 @@ export default function Chat({ conversationId, onConversationCreated }) {
     }
   }
 
-  // Enter = Send, Shift+Enter = newline
   function handleKeyDown(e) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -176,7 +174,6 @@ export default function Chat({ conversationId, onConversationCreated }) {
 
       <div className="inputRow">
         <textarea
-          ref={textareaRef}
           className="chatInput"
           value={input}
           disabled={loading}
