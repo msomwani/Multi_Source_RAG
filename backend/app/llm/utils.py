@@ -1,3 +1,9 @@
+"""
+EXPERIMENTAL MODULE
+Used only for multi-query retrieval experiments.
+Not part of the production pipeline.
+"""
+
 from openai import OpenAI
 from app.config import settings
 import logging

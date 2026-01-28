@@ -8,13 +8,15 @@ from app.db import crud_messages
 from app.db.models import Conversation
 
 from app.retrieval.hybrid import hybrid_retrieve
-from app.llm.answer_generator import (
-    generate_answer_with_history,
-    stream_answer,
-)
+from app.llm.answer_generator import stream_answer
 
 router = APIRouter()
 
+# --------------------------------------------------
+# Retrieval constants (final evaluated values)
+# --------------------------------------------------
+RETRIEVAL_K = 20
+HYBRID_ALPHA = 0.5
 
 # --------------------------------------------------
 # DB dependency
@@ -26,25 +28,20 @@ def get_db():
     finally:
         db.close()
 
-
 # --------------------------------------------------
-# Request schema
+# Request schema (locked)
 # --------------------------------------------------
 class QueryRequest(BaseModel):
     query: str
-    k: int = 5
     conversation_id: int | None = None
 
+# --------------------------------------------------
+# Citation helpers (stable numbering)
+# --------------------------------------------------
+def build_sources_and_contexts(docs: list[dict]):
+    if not docs:
+        return [], []
 
-# --------------------------------------------------
-# Citations helpers
-# --------------------------------------------------
-def build_sources_and_contexts(docs):
-    """
-    Stable numbering for citations:
-    [1] (source.pdf)
-    chunk text...
-    """
     sources = []
     seen = set()
 
@@ -56,81 +53,16 @@ def build_sources_and_contexts(docs):
 
     source_index = {src: i + 1 for i, src in enumerate(sources)}
 
-    contexts = []
-    for d in docs:
-        src = d.get("source", "unknown")
-        idx = source_index.get(src, 0)
-        contexts.append(f"[{idx}] ({src})\n{d['text']}")
+    contexts = [
+        f"[{source_index.get(d.get('source', 'unknown'))}] "
+        f"({d.get('source', 'unknown')})\n{d['text']}"
+        for d in docs
+    ]
 
     return sources, contexts
 
-
 # --------------------------------------------------
-# NON-STREAMING QUERY
-# --------------------------------------------------
-@router.post("/query")
-async def query(req: QueryRequest, db: Session = Depends(get_db)):
-
-    conversation = None
-    if req.conversation_id is not None:
-        conversation = (
-            db.query(Conversation)
-            .filter(Conversation.id == req.conversation_id)
-            .first()
-        )
-
-    if conversation is None:
-        conversation = crud_messages.create_conversation(db)
-
-    conversation_id = conversation.id
-
-    # store user message
-    crud_messages.add_message(
-        db,
-        conversation_id=conversation_id,
-        role="user",
-        content=req.query,
-    )
-
-    history = crud_messages.get_recent_messages(db, conversation_id, limit=10)
-    history_pairs = [(m.role, m.content) for m in history]
-
-    # ✅ SINGLE retrieval strategy (evaluated)
-    docs = hybrid_retrieve(
-        req.query,
-        conversation_id=conversation_id,
-        k=req.k * 4,
-        alpha=0.5,
-    )
-
-    if not docs:
-        answer = "I don't have enough information in the provided documents."
-        sources = []
-    else:
-        sources, contexts = build_sources_and_contexts(docs)
-        answer = generate_answer_with_history(
-            req.query,
-            contexts,
-            history_pairs,
-        )
-
-    crud_messages.add_message(
-        db,
-        conversation_id=conversation_id,
-        role="assistant",
-        content=answer,
-        meta={"sources": sources},
-    )
-
-    return {
-        "conversation_id": conversation_id,
-        "answer": answer,
-        "sources": sources,
-    }
-
-
-# --------------------------------------------------
-# STREAMING QUERY (ABORT-SAFE)
+# STREAMING QUERY (PRIMARY & ONLY ENDPOINT)
 # --------------------------------------------------
 @router.post("/query/stream")
 async def query_stream(
@@ -138,20 +70,21 @@ async def query_stream(
     request: Request,
     db: Session = Depends(get_db),
 ):
-
-    conversation = None
-    if req.conversation_id is not None:
-        conversation = (
-            db.query(Conversation)
-            .filter(Conversation.id == req.conversation_id)
-            .first()
-        )
+    # Load or create conversation
+    conversation = (
+        db.query(Conversation)
+        .filter(Conversation.id == req.conversation_id)
+        .first()
+        if req.conversation_id is not None
+        else None
+    )
 
     if conversation is None:
         conversation = crud_messages.create_conversation(db)
 
     conversation_id = conversation.id
 
+    # Store user message
     crud_messages.add_message(
         db,
         conversation_id=conversation_id,
@@ -159,22 +92,47 @@ async def query_stream(
         content=req.query,
     )
 
-    history = crud_messages.get_recent_messages(db, conversation_id, limit=10)
+    history = crud_messages.get_recent_messages(
+        db, conversation_id, limit=10
+    )
     history_pairs = [(m.role, m.content) for m in history]
 
+    # Final evaluated pipeline: hybrid retrieval only
     docs = hybrid_retrieve(
         req.query,
         conversation_id=conversation_id,
-        k=req.k * 4,
-        alpha=0.5,
+        k=RETRIEVAL_K,
+        alpha=HYBRID_ALPHA,
     )
+
+    # Handle empty retrieval case explicitly
+    if not docs:
+        def empty_stream():
+            msg = "I don't have enough information in the provided documents."
+            yield msg
+            crud_messages.add_message(
+                db,
+                conversation_id=conversation_id,
+                role="assistant",
+                content=msg,
+                meta={"sources": []},
+            )
+
+        return StreamingResponse(
+            empty_stream(),
+            media_type="text/plain",
+        )
 
     sources, contexts = build_sources_and_contexts(docs)
 
     def event_stream():
         full_answer = ""
 
-        for token in stream_answer(req.query, contexts, history_pairs):
+        for token in stream_answer(
+            req.query,
+            contexts,
+            history_pairs,
+        ):
             if request.client is None:
                 return
             full_answer += token
@@ -188,4 +146,7 @@ async def query_stream(
             meta={"sources": sources},
         )
 
-    return StreamingResponse(event_stream(), media_type="text/plain")
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/plain",
+    )

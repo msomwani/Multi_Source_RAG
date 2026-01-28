@@ -1,7 +1,8 @@
-from app.llm.embeddings import embed
-from app.vectorstore.store import get_collection
 from typing import List, Dict
 import json
+
+from app.llm.embeddings import embed
+from app.vectorstore.store import get_collection
 
 
 def dense_retrieve(
@@ -11,8 +12,7 @@ def dense_retrieve(
 ) -> List[Dict]:
     """
     Dense retrieval scoped to a conversation.
-    Returns: [{text, source, score, meta}]
-    score = chroma distance (lower is better)
+    score = Chroma distance (lower is better)
     """
 
     collection = get_collection()
@@ -42,16 +42,10 @@ def dense_retrieve(
     ):
         meta = meta or {}
 
-        # ✅ decode structured table json stored in metadata (if any)
+        # Decode structured table JSON if stored as string
         if isinstance(meta.get("table"), str):
             try:
                 meta["table"] = json.loads(meta["table"])
-            except Exception:
-                pass
-
-        if isinstance(meta.get("table_json"), str):
-            try:
-                meta["table"] = json.loads(meta["table_json"])
             except Exception:
                 pass
 

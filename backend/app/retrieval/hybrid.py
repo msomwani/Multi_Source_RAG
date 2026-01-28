@@ -1,10 +1,11 @@
+from typing import List, Dict
+import re
+import numpy as np
+
 from rank_bm25 import BM25Okapi
+
 from app.vectorstore.store import get_collection
 from app.llm.embeddings import embed
-
-import numpy as np
-import re
-from typing import List, Dict
 
 
 def simple_tokenize(text: str) -> List[str]:
@@ -13,7 +14,9 @@ def simple_tokenize(text: str) -> List[str]:
 
 def build_bm25_index(conversation_id: int):
     """
-    Builds BM25 index from documents stored in Chroma for this conversation.
+    NOTE:
+    BM25 index is rebuilt per query.
+    This is intentionally left uncached for correctness.
     """
     collection = get_collection()
 
@@ -32,7 +35,11 @@ def build_bm25_index(conversation_id: int):
     return BM25Okapi(tokenized), docs, metas
 
 
-def bm25_retrieve(query: str, conversation_id: int, k: int = 5) -> List[Dict]:
+def bm25_retrieve(
+    query: str,
+    conversation_id: int,
+    k: int = 5,
+) -> List[Dict]:
     bm25, docs, metas = build_bm25_index(conversation_id)
     if bm25 is None:
         return []
@@ -49,15 +56,19 @@ def bm25_retrieve(query: str, conversation_id: int, k: int = 5) -> List[Dict]:
             {
                 "text": docs[i],
                 "source": meta.get("source", "unknown"),
-                "score": float(scores[i]),  # bm25 score (higher is better)
+                "score": float(scores[i]),  # higher is better
                 "meta": meta,
-                "retrieval": "bm25",
             }
         )
+
     return out
 
 
-def dense_retrieve_raw(query: str, conversation_id: int, k: int = 5) -> List[Dict]:
+def dense_retrieve_raw(
+    query: str,
+    conversation_id: int,
+    k: int = 5,
+) -> List[Dict]:
     collection = get_collection()
 
     existing = collection.get(
@@ -87,11 +98,11 @@ def dense_retrieve_raw(query: str, conversation_id: int, k: int = 5) -> List[Dic
             {
                 "text": text,
                 "source": meta.get("source", "unknown"),
-                "score": float(dist),  # distance (lower is better)
+                "score": float(dist),  # lower is better
                 "meta": meta,
-                "retrieval": "dense",
             }
         )
+
     return out
 
 
@@ -102,11 +113,10 @@ def hybrid_retrieve(
     alpha: float = 0.5,
 ) -> List[Dict]:
     """
-    ✅ Returns unified docs list [{text, source, score, meta}]
-    Uses:
-      BM25 (higher=better)
-      Dense distance (lower=better)
-    Combines them into a hybrid score.
+    Final evaluated retrieval strategy.
+    Combines:
+      - BM25 (lexical)
+      - Dense embeddings
     """
 
     bm25_docs = bm25_retrieve(query, conversation_id, k=k * 2)
@@ -115,50 +125,49 @@ def hybrid_retrieve(
     if not bm25_docs and not dense_docs:
         return []
 
-    # Normalize BM25 to [0,1]
     bm25_scores = [d["score"] for d in bm25_docs] or [0.0]
     bm25_max = max(bm25_scores) or 1.0
 
-    # Normalize Dense distance to [0,1] similarity
     dense_dists = [d["score"] for d in dense_docs] or [1.0]
     dense_max = max(dense_dists) or 1.0
 
-    merged = {}
+    merged: dict[str, dict] = {}
 
-    def key(doc):
-        return doc["text"]  # good enough dedupe for now
+    def key(d):
+        return d["text"]
 
     for d in bm25_docs:
-        bm25_norm = d["score"] / bm25_max
         merged[key(d)] = {
             "text": d["text"],
             "source": d["source"],
-            "meta": d.get("meta") or {},
-            "hybrid_score": (1 - alpha) * bm25_norm,
+            "meta": d["meta"],
+            "hybrid_score": (1 - alpha) * (d["score"] / bm25_max),
         }
 
     for d in dense_docs:
-        # similarity = 1 - normalized_distance
         dense_sim = 1.0 - (d["score"] / dense_max)
 
         if key(d) not in merged:
             merged[key(d)] = {
                 "text": d["text"],
                 "source": d["source"],
-                "meta": d.get("meta") or {},
+                "meta": d["meta"],
                 "hybrid_score": alpha * dense_sim,
             }
         else:
             merged[key(d)]["hybrid_score"] += alpha * dense_sim
 
-    ranked = sorted(merged.values(), key=lambda x: x["hybrid_score"], reverse=True)
+    ranked = sorted(
+        merged.values(),
+        key=lambda x: x["hybrid_score"],
+        reverse=True,
+    )
 
-    # return in rerank-friendly format
     return [
         {
             "text": r["text"],
             "source": r["source"],
-            "score": float(r["hybrid_score"]),  # hybrid score (higher better)
+            "score": float(r["hybrid_score"]),
             "meta": r["meta"],
         }
         for r in ranked[:k]
