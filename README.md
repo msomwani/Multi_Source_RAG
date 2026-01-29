@@ -1,15 +1,16 @@
 # Multi-Source RAG 🚀
 
-A lightweight **Multi-Source Retrieval Augmented Generation (RAG)** system that lets you ingest knowledge from files and websites, then chat with an AI grounded in your data — with **hybrid retrieval**, **streaming responses**, and a modern UI.
+A **production-oriented Multi-Source Retrieval Augmented Generation (RAG)** system that ingests knowledge from documents and websites, then enables conversational querying with **hybrid retrieval**, **streaming responses**, **metadata-aware citations**, and a modern UI.
 
+This project emphasizes **evaluation-driven architecture decisions** rather than feature bloat.
 
 
 ## 📸 Screenshots
 
-### 🏗️ Architecture (1)
+### 🏗️ Architecture (Ingestion)
 ![Architecture 1](docs/architecture/Ingestion.png)
 
-### 🏗️ Architecture (2)
+### 🏗️ Architecture (Query Pipeline)
 ![Architecture 2](docs/architecture/Query-pipeline.png)
 
 ### 💻 UI (Light/Dark + Draft Chat)
@@ -19,65 +20,55 @@ A lightweight **Multi-Source Retrieval Augmented Generation (RAG)** system that 
 ![UI 2](docs/screenshot/UI_2.png)
 
 
-
-
-
-## ✨ Features
+## ✨ Key Capabilities
 
 ### ✅ Multi-Source Ingestion
-- Upload files: **PDF, DOCX, TXT**
-- Ingest **Web URLs**
-- Chunking + Embedding + Storage into Vector DB
+- File ingestion: **PDF, DOCX, TXT**
+- Web URL ingestion
+- OCR-supported ingestion for scanned documents
+- Chunking, embedding, and storage in a vector database with metadata
 
-### ✅ Hybrid Retrieval + RAG Pipeline
-- **Hybrid Retrieval (Dense + Keyword/BM25-style)**
-- Dense retrieval with embeddings
-- Multi-Query expansion
-- Cross-Encoder reranking
+### ✅ Hybrid Retrieval (Primary Pipeline)
+- Combines **dense embeddings + keyword/BM25-style retrieval**
+- Metadata-aware chunk retrieval with stable source attribution
+- Optimized for small–medium corpora using empirical evaluation results
 
+### ✅ Retrieval Evaluation Framework
+- Custom evaluation harness to benchmark:
+  - Dense vs Hybrid vs Multi-query vs Reranking pipelines
+  - Latency and keyword-level correctness
+- JSON-based result logging with timestamps
+- Evaluation results used to **simplify and harden the production pipeline**
 
-### ✅ Conversations + Memory
-- Multiple conversations supported
-- Chat history stored in **PostgreSQL**
-- Delete conversations
+### ✅ Conversational Memory
+- Multi-conversation support
+- Chat history persisted in **PostgreSQL**
+- Draft chat mode (UI-only) until first interaction
 
-### ✅ Streaming UI + Sources
-- Real-time **token streaming** answers
-- Retrieved **sources shown** under assistant messages
+### ✅ Streaming Answers + Citations
+- Token-level streaming responses
+- Stable, numbered source citations shown with each assistant message
+- Metadata preserved end-to-end from ingestion to answer
 
-
-### ✅ Draft Chat 
-- App opens into a **New Chat (Draft)**
-- Draft chat is **UI-only** (not stored in DB)
-- A real conversation is created only when the user:
-  - sends the first message, OR
-  - uploads a file / URL
-- Sidebar refreshes instantly when a chat is created
-
-### ✅ Dark Mode
-- Light/Dark theme switch
-- Theme persists via `localStorage`
-
-### ✅ Docker + Deployment Ready
-- Dockerized frontend + backend setup
-- Easy to run locally with Docker Compose
-
+### ✅ Modern UI
+- Clean chat interface with draft conversations
+- Light/Dark mode with persistent theme
+- Responsive sidebar for conversations and ingestion
 
 
 ## 🧱 Tech Stack
 
 ### Backend
 - FastAPI
-- PostgreSQL (chat history)
+- PostgreSQL (conversation + message storage)
 - ChromaDB (vector database)
-- OpenAI API (LLM)
-- HuggingFace Cross-Encoder (reranking)
+- OpenAI API (LLM + embeddings)
+- HuggingFace Cross-Encoder (evaluation & reranking experiments)
 
 ### Frontend
 - React (Vite)
 - Streaming via Fetch + ReadableStream
-- Clean UI with Draft Chat behavior
-
+- Minimal, UX-focused chat interface
 
 
 ## ⚡ Quick Start (Local)
@@ -106,11 +97,9 @@ UI:
 http://127.0.0.1:5173
 ```
 
----
 
 ## 🐳 Run with Docker
 
-Build and run everything:
 ```bash
 docker compose up --build
 ```
@@ -120,28 +109,27 @@ Stop:
 docker compose down
 ```
 
----
 
-## 🔗 Key API Routes
+## 🔗 Core API Routes
 
-### Chat / Query
+### Chat
 - `POST /query` — Non-streaming response
 - `POST /query/stream` — Streaming response
 
 ### Conversations
-- `POST /conversations` — Create new conversation
-- `GET /conversations` — List conversations
-- `GET /conversations/{id}` — Get conversation + messages
-- `DELETE /conversations/{id}` — Delete conversation
+- `POST /conversations`
+- `GET /conversations`
+- `GET /conversations/{id}`
+- `DELETE /conversations/{id}`
 
 ### Ingestion
-- `POST /ingest` — Upload file
-- `POST /ingest/url` — Ingest URL
+- `POST /ingest`
+- `POST /ingest/url`
 
 
+## 🧠 Architectural Notes
 
-## 📌 Roadmap (Next Improvements)
-- OCR ingestion (scanned PDFs + images)
-- Better table extraction and table-aware chunking
-- Better citations (page numbers + metadata)
-- Guardrails for RAG
+- Hybrid retrieval is the **default production pipeline**, chosen after empirical evaluation.
+- Multi-query expansion and reranking are retained as experimental modules but excluded from the hot path due to high latency with minimal gains.
+- The system prioritizes **clarity, observability, and correctness** over feature overload.
+
