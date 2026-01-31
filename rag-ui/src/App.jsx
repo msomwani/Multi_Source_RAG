@@ -21,7 +21,7 @@ export default function App() {
       <header className="topHeader">
         <div className="topHeaderLeft">
           <div className="topHeaderTitle">Multi-Source RAG</div>
-          <div className="topHeaderSub">PDF • DOCX • Web • Text</div>
+          <div className="topHeaderSub">PDF • DOCX • Web • Text • Images</div>
         </div>
 
         <div className="topHeaderRight">

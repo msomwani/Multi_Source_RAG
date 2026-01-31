@@ -6,7 +6,9 @@ export default function IngestPanel({ conversationId, onConversationCreated }) {
   const [url, setUrl] = useState("");
   const [status, setStatus] = useState("");
 
-  const isDraft = conversationId === "draft";
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [isUploadingUrl, setIsUploadingUrl] = useState(false);
+
   const isRealConversation = typeof conversationId === "number";
 
   async function ensureConversationExists() {
@@ -18,13 +20,16 @@ export default function IngestPanel({ conversationId, onConversationCreated }) {
     return newId;
   }
 
+  // -----------------------------
+  // FILE INGESTION
+  // -----------------------------
   async function uploadFile() {
-    if (!file) {
-      setStatus("❌ Select a file first");
-      return;
-    }
+    if (!file || isUploadingFile) return;
 
     try {
+      setIsUploadingFile(true);
+      setStatus("⏱️ Ingesting file...");
+
       const realConversationId = await ensureConversationExists();
 
       const form = new FormData();
@@ -35,20 +40,25 @@ export default function IngestPanel({ conversationId, onConversationCreated }) {
       });
 
       setStatus("✅ File ingested successfully");
-      setFile(null);
+      setFile(null); // reset file
     } catch (e) {
       console.error(e);
       setStatus("❌ Failed to ingest file");
+    } finally {
+      setIsUploadingFile(false);
     }
   }
 
+  // -----------------------------
+  // URL INGESTION
+  // -----------------------------
   async function uploadUrl() {
-    if (!url.trim()) {
-      setStatus("❌ Enter a URL first");
-      return;
-    }
+    if (!url.trim() || isUploadingUrl) return;
 
     try {
+      setIsUploadingUrl(true);
+      setStatus("⏱️ Ingesting URL...");
+
       const realConversationId = await ensureConversationExists();
 
       await api.post("/ingest/url", null, {
@@ -63,6 +73,8 @@ export default function IngestPanel({ conversationId, onConversationCreated }) {
     } catch (e) {
       console.error(e);
       setStatus("❌ Failed to ingest URL");
+    } finally {
+      setIsUploadingUrl(false);
     }
   }
 
@@ -77,34 +89,49 @@ export default function IngestPanel({ conversationId, onConversationCreated }) {
         </div>
       </div>
 
-      {/* ✅ File */}
+      {/* ---------------- FILE ---------------- */}
       <div className="ingestBlock">
         <label className="ingestLabel">Upload File</label>
 
         <input
+          key={file ? file.name : "empty"} // force reset after upload
           className="ingestInput"
           type="file"
-          onChange={(e) => setFile(e.target.files[0])}
+          onChange={(e) => {
+            setFile(e.target.files[0] || null);
+            setStatus("");
+          }}
         />
 
-        <button className="ingestActionBtn" onClick={uploadFile}>
-          Upload
+        <button
+          className="ingestActionBtn"
+          onClick={uploadFile}
+          disabled={!file || isUploadingFile}
+        >
+          {isUploadingFile ? "Uploading..." : "Upload"}
         </button>
       </div>
 
-      {/* ✅ URL */}
+      {/* ---------------- URL ---------------- */}
       <div className="ingestBlock">
         <label className="ingestLabel">Ingest URL</label>
 
         <input
           className="ingestInput"
           value={url}
-          onChange={(e) => setUrl(e.target.value)}
+          onChange={(e) => {
+            setUrl(e.target.value);
+            setStatus("");
+          }}
           placeholder="https://example.com"
         />
 
-        <button className="ingestActionBtn" onClick={uploadUrl}>
-          Add URL
+        <button
+          className="ingestActionBtn"
+          onClick={uploadUrl}
+          disabled={!url.trim() || isUploadingUrl}
+        >
+          {isUploadingUrl ? "Adding..." : "Add URL"}
         </button>
       </div>
 
